@@ -2,7 +2,6 @@
 
 # ignore larger cvs files
 Reviews_30000.csv
-Stars_30000.csv
 
 # pycharm seting file
 .idea/
