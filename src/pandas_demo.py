@@ -1,10 +1,10 @@
-"""
-
-This file contains basic mainpulation related to stars table
-"""
-
 import pandas as pd
+"""
+This file demostrate how to read file from
+"""
+
 pd.set_option('display.mpl_style', 'default')
+
 
 class Star:
     def __init__(self):
