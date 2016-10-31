@@ -40,7 +40,7 @@ if __name__ == '__main__':
     print('Total unique business id: {}'.format(num_business))
 
     # construct scipy sparse csr_matrix
-    # TODO: csr is slow for row indexing, might need to change to other sparse format later
+    # Use csc (column based) instead of csr (row based) format. Reference: http://stackoverflow.com/a/16875631
     data = []
     row_ind = []
     col_ind = []
@@ -50,10 +50,10 @@ if __name__ == '__main__':
         col_ind.append(bid)
         data.append(rating)
 
-    us_bs_matrix = sparse.csr_matrix((data, (row_ind, col_ind)), shape=(num_user, num_business), dtype=int)
+    us_bs_matrix = sparse.csc_matrix((data, (row_ind, col_ind)), shape=(num_user, num_business), dtype=int)
 
     print 'Average rating: ',us_bs_matrix[us_bs_matrix > 0].mean()
 
     # output to mtx file
-    print 'Saving...'
+    print("Saving to {}...".format(args.oupf))
     io.mmwrite(args.oupf, us_bs_matrix)
