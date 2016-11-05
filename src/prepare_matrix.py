@@ -16,19 +16,17 @@ def parse_arg(argv):
     parsing cli arguments
     '''
     parser = argparse.ArgumentParser(description='Prepare rating matrix')
-    parser.add_argument('-i', '--inpf', default='../raw_data/Stars_30000.csv', help='csv input file for start matrix')
-    parser.add_argument('-o', '--oupf', default='../processed_data/Stars_30000.mtx', help='scipy sparse matrix file containing star matrix')
+    parser.add_argument('-i', '--inpf', default='../raw_data/Stars_Top_Users.csv', help='csv input file for start matrix')
+    parser.add_argument('-o', '--oupf', default='../processed_data/Stars_Top_Users.mtx', help='scipy sparse matrix file containing star matrix')
     return parser.parse_args(argv[1:])
 
 
 if __name__ == '__main__':
     args = parse_arg(sys.argv)
     df = pd.read_csv(args.inpf)
-    print(df.head())
 
     # extract and user id
     # TODO: Some user id are stange, "(Also" is a use id?
-    # print(df['user_id'])
 
     user_id = {uid: i for i, uid in enumerate(set(df["user_id"]))}
     num_user = len(user_id)
