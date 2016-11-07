@@ -6,4 +6,4 @@ Reviews_30000.csv
 # pycharm seting file
 .idea/
 .cache
-
+*.pkl
