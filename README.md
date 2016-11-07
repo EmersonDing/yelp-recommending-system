@@ -11,3 +11,7 @@
     - Install pytest ```sudo pip install pytest```
     - run in src/test folder ```py.test```
     - To show output when debugging your test script, run ```py.test -s```
+
+
+# Resources
+Data Directory: https://drive.google.com/open?id=0B07D3IyxKrDeQ0x1bFdNNldGMmM
