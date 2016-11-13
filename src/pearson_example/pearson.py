@@ -1,14 +1,37 @@
-'''
+# -*- coding: utf-8 -*-
+"""
 Source:
 http://stackoverflow.com/questions/3949226/calculating-pearson-correlation-and-significance-in-python
-'''
+
+Definition of pearson correlation:
+http://grouplens.org/blog/similarity-functions-for-user-user-collaborative-filtering/
+https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Definition
+"""
+
 
 import numpy as np
 import math
 
 
+def pearson_vec(matX, epsilon=1e-9):
+    """
+    Compute Pearson Correlation Coefficient for matrix.
+    :param matX: numpy matrix
+    :param epsilon: float
+    :return: numpy matrix
+    """
+    n = matX.shape[1]
+    avg_x = np.sum(matX, axis=1) / n
+    xdiff = matX - avg_x
+    xdiff2 = np.sum(np.power(xdiff, 2), axis=1)
+
+    num = xdiff.dot(xdiff.T)
+    dom = np.sqrt(xdiff2.dot(xdiff2.T)) + epsilon
+    return num / dom
+
+
 def get_pearson_correlation(first_feature_vector=[], second_feature_vector=[], length_of_featureset=0):
-    '''
+    """
     An implementation for pearson correlation based on sparse vector. The vectors here are expressed as
     a list of tuples expressed as (index, value). The two sparse vectors can be of different length but
     over all vector size will have to be same.
@@ -16,7 +39,7 @@ def get_pearson_correlation(first_feature_vector=[], second_feature_vector=[], l
     :param second_feature_vector: array of tuple
     :param length_of_featureset: int
     :return: float
-    '''
+    """
     indexed_feature_dict = {}
     if first_feature_vector == [] or second_feature_vector == [] or length_of_featureset == 0:
         raise ValueError("Empty feature vectors or zero length of featureset in get_pearson_correlation")
@@ -67,14 +90,15 @@ def average(x):
     assert len(x) > 0
     return float(sum(x)) / len(x)
 
+
 def pearson_def(x, y):
-    '''
+    """
     Compute Pearson Correlation Coefficient.
     (only work on single array)
     :param x: numpy array
     :param y: numpy array
     :return: int
-    '''
+    """
     assert len(x) == len(y)
     n = len(x)
     assert n > 0
@@ -93,13 +117,29 @@ def pearson_def(x, y):
     return diffprod / math.sqrt(xdiff2 * ydiff2)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     X1 = np.array([1, 2, 3])
     Y1 = np.array([1, 5, 7])
+    Z1 = np.array([3, 4, 9])
 
-    print np.corrcoef(X1, Y1)
-    print pearson_def(X1, Y1)
+    print 'Result from np.corrcoef:\n', np.corrcoef(X1, Y1)
+
+    print 'Result from pearson_def:'
+    print 'x-y', pearson_def(X1, Y1)
+    print 'x-z', pearson_def(X1, Z1)
+    print 'y-z', pearson_def(Y1, Z1)
 
     vector_a = [(1, 1), (2, 2), (3, 3)]
     vector_b = [(1, 1), (2, 5), (3, 7)]
+    print 'Result from pearson sparse:'
     print get_pearson_correlation(vector_a, vector_b, 3)
+
+    matX = np.matrix([[1, 2, 3],
+                     [1, 5, 7],
+                     [3, 4, 9]], dtype=np.float32)
+    cor_x = pearson_vec(matX)
+    print 'Result from pearson_vec:\n', cor_x
+
+    from sklearn.metrics import pairwise_distances
+    sk_x = 1 - pairwise_distances(matX, metric='correlation')
+    print 'Result from sklearn pairwise_distance:\n', sk_x
