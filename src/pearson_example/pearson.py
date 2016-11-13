@@ -136,7 +136,8 @@ if __name__ == '__main__':
 
     matX = np.matrix([[1, 2, 3],
                      [1, 5, 7],
-                     [3, 4, 9]], dtype=np.float32)
+                     [3, 4, 9],
+                     [2, 7, 4]], dtype=np.float32)
     cor_x = pearson_vec(matX)
     print 'Result from pearson_vec:\n', cor_x
 
