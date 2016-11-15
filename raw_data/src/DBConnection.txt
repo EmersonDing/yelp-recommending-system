@@ -1,0 +1,3 @@
+jdbc:mysql://localhost:3306/yelp?serverTimezone=UTC
+root
+Welcome12
