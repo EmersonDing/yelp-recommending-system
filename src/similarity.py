@@ -12,20 +12,20 @@ def cosine_sim(x, epsilon=1e-9):
     return (sim / norms / norms.T)
 
 
-def pearson_sim(x):
+def pearson_sim(x, epsilon=1e-9):
     '''
     @param x: 2D (sparse) array. Input matrix. shape: (# rows, # cols)
     @return: 2D non sparse array. correlation coefficient of each row in x. shape: (# rows, # rows)
     '''
     num_cols = float(x.shape[1])
     meanx = x.sum(axis=1)/num_cols
-    covx = np.array((x*x.T)/num_cols - meanx*meanx.T)
+    covx = np.array((x.dot(x.T))/num_cols - meanx.dot(meanx.T))
 
     stdx = np.sqrt(np.diag(covx))  # std of each item, shape: (# rows,)
     stdx = stdx[:, np.newaxis]  # shape: (# rows, 1)
-    res = covx/(stdx * stdx.T)
+    res = covx/(stdx.dot(stdx.T))
     # # Note that when one item of the rating matrix is all the same (usually it should be all 0 due to the train/test split process), the std of that column will be 0 and res will be nan for that column.
-    # res[np.isnan(res)] = 0
+    res[np.isnan(res)] = 0
 
     return res
 

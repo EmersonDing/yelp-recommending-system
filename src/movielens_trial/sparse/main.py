@@ -71,20 +71,20 @@ def get_mse(pred, actual):
 
 
 def doIt(modelCls, **model_args):
-    user_model = modelCls(item_based=False, **model_args)
-    item_model = modelCls(item_based=True, **model_args)
 
-    user_model.train(train_mat)
-    item_model.train(train_mat)
-
-    user_prediction = user_model.predict(train_mat, test_mat)
-    item_prediction = item_model.predict(train_mat, test_mat)
     print
     print('='*20)
     print('Model: {}'.format(modelCls.__name__))
     print('Args: {}'.format(model_args))
+    user_model = modelCls(**model_args)
+    user_model.train(train_mat)
+    user_prediction = user_model.predict(train_mat, test_mat)
     print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
-    print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_mat)))
+
+    item_model = modelCls(**model_args)
+    item_model.train(train_mat.T)
+    item_prediction = item_model.predict(train_mat.T, test_mat.T)
+    print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_mat.T)))
 
 
 if __name__ == '__main__':

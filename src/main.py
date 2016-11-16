@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Main script to test different algorithms 
+Main script to test different algorithms
 """
 
 import argparse
@@ -13,7 +13,9 @@ import sys
 import numpy as np
 import pandas as pd
 import similarity
-from model import Simple_sim, Topk
+from model import Simple_sim
+from model import Bias
+from model import Neighbor 
 from scipy import sparse
 
 
@@ -110,6 +112,7 @@ def preprocess_data(fname):
 
 
 def get_mse(pred, actual):
+    # pred = np.asarray(pred).flatten()
     pred = np.asarray(pred).flatten()
     actual = np.asarray(actual[actual.nonzero()]).flatten()
     assert(len(pred)==len(actual))
@@ -117,20 +120,20 @@ def get_mse(pred, actual):
 
 
 def doIt(modelCls, **model_args):
-    user_model = modelCls(item_based=False, **model_args)
-    item_model = modelCls(item_based=True, **model_args)
 
-    user_model.train(train_mat)
-    item_model.train(train_mat)
-
-    user_prediction = user_model.predict(train_mat, test_mat)
-    item_prediction = item_model.predict(train_mat, test_mat)
     print
     print('='*20)
     print('Model: {}'.format(modelCls.__name__))
     print('Args: {}'.format(model_args))
+    user_model = modelCls(**model_args)
+    user_model.train(train_mat)
+    user_prediction = user_model.predict(train_mat, test_mat)
     print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
-    print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_mat)))
+
+    item_model = modelCls(**model_args)
+    item_model.train(train_mat.T)
+    item_prediction = item_model.predict(train_mat.T, test_mat.T)
+    print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_mat.T)))
 
 if __name__ == '__main__':
 
@@ -153,6 +156,6 @@ if __name__ == '__main__':
             data = pickle.load(f)
             train_mat, test_mat = data['train'], data['test']
 
-    # Note: simple_sim is just TopK with k=\infty
     doIt(Simple_sim, sim_fn=similarity.cosine_sim)
-    # doIt(Topk, k=50, sim_fn=similarity.cosine_sim)
+    doIt(Bias)
+    doIt(Neighbor, sim_fn=similarity.cosine_sim, k=100, iteration=5)
