@@ -32,7 +32,13 @@ class Simple_sim(object):
 
 
 class Bias(object):
-    def train(self, ui_mat, gamma=0.005, lambda4=0.002, iteration=15):
+    def __init__(self, gamma=0.005, lambda4=0.002, iteration=15):
+        self.gamma = gamma
+        self.lambda4 = lambda4
+        self.iteration = iteration
+
+    def train(self, ui_mat):
+        gamma, lambda4 = self.gamma, self.lambda4  # just to make it short
         self.mu = ui_mat.sum()/ui_mat.getnnz()
         self.bu = np.zeros(ui_mat.shape[0])
         self.bi = np.zeros(ui_mat.shape[1])
@@ -43,7 +49,7 @@ class Bias(object):
         user_sum = ui_mat.sum(axis=1).A1
         item_sum = ui_mat.sum(axis=0).A1
 
-        for _ in range(iteration):
+        for _ in range(self.iteration):
             pred_data = self.predict(ui_mat, ui_mat)
             pred_coo = sparse.coo_matrix((pred_data, (rows, cols)))
             pred_user_sum = pred_coo.tocsr().sum(axis=1).A1
