@@ -4,6 +4,7 @@
 * preprocessed_data: intermediate result after preprocessing raw data
 * src: all source scripts
     * test: all test cases (see below)
+    * main.py: compare different models
 
 # Testing
 1. Write test cases in src/test (see src/test/test_k_nearest_neighbor.py as an example.)
