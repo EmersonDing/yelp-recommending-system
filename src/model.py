@@ -33,6 +33,9 @@ class Simple_sim(object):
 
 class Model(object):
     def train(self, ui_mat):
+        ''' Do batch gradient descent to minimize mse error.
+        @param ui_mat: 2D sparse matrix. Training matrix.
+        '''
         self.init_non_param(ui_mat)
         self.init_param(ui_mat)
 
@@ -42,23 +45,60 @@ class Model(object):
             for param, g in zip(self.parameters, gradient):
                 param += self.gamma * g
 
+    def init_param(self, ui_mat):
+        '''Initialize model parameters that are updated in each iteration during training. Should be implemented by derived class.
+        @param ui_mat: 2D sparse matrix. Training matrix.
+        '''
+        raise NotImplementedError
+
+    def init_non_param(self, ui_mat):
+        '''Initialize model parameters that are not updated in each iteration during training (but you don't want to recompute them every iteration). Should be implemented by derived class.
+        @param ui_mat: 2D sparse matrix. Training matrix.
+        '''
+        raise NotImplementedError
+
+    def gradient(self, ui_mat, pred_data):
+        '''Calculate the gradient (partial derivative of error function w.r.t model parameters).
+        @param ui_mat: 2D sparse matrix. Training matrix.
+        @param pred_data: 1D array. The predicted values of each non zero element of ui_mat. Note you could reconstruct the prediction sparse matrix like: `pred_mat = csr_matrix((pred_data, ui_mat.nonzero())`.
+        '''
+
+    def predict(self, ui_mat, test_mat):
+        '''Predict the ratings for the nonzero entry in test_mat. ui_mat is provided in case we need it.
+        @param ui_mat: 2D sparse matrix. Training matrix.
+        @param test_mat: 2D sparse matrix. Testing matrix.
+        @return list. The length of the return list will be of length test_mat.getnnz()
+        '''
+        raise NotImplementedError
+
 
 class Bias(Model):
     def __init__(self, gamma=0.005, lambda4=0.002, iteration=15):
+        ''' Bias model, refer to report.
+        @param gamma: float. learning rate.
+        @param lambda4: float. regularition weight.
+        @param iteration: sgd iteration.
+        '''
         self.gamma = gamma
         self.lambda4 = lambda4
         self.iteration = iteration
 
     def init_non_param(self, ui_mat):
+        ''' @see Model.init_non_param.
+        '''
         self.mu = ui_mat.sum()/ui_mat.getnnz()
 
     def init_param(self, ui_mat):
+        ''' @see Model.init_param.
+        '''
         self.bu = np.zeros(ui_mat.shape[0])
         self.bi = np.zeros(ui_mat.shape[1])
         self.parameters = [self.bu, self.bi]
         return self.parameters
 
     def gradient(self, ui_mat, pred_data):
+        ''' @see Model.gradient.
+        '''
         rows, cols = ui_mat.nonzero()
 
         user_nnz = ui_mat.getnnz(axis=1)
@@ -87,14 +127,21 @@ class Bias(Model):
         return [deta_bu, deta_bi]
 
     def predict(self, ui_mat, test_mat):
+        ''' @see Model.predict.
+        '''
         rows, cols = test_mat.nonzero()
         p = self.bu[rows] + self.bi[cols] + self.mu
         return p
 
 
 class Neighbor(Bias):
-    def __init__(self, sim_fn, k=500, gamma=0.005, lambda4=0.002, iteration=15, **kwargs):
-        super(Neighbor, self).__init__(**kwargs)
+    def __init__(self, sim_fn, k=500, gamma=0.005, lambda4=0.002, iteration=15):
+        ''' Neighborhood model, refer to report.
+        @param k: how many neighbor to use.
+        @param gamma: float. learning rate.
+        @param lambda4: float. regularition weight.
+        @param iteration: sgd iteration.
+        '''
         self.sim_fn = sim_fn
         self.k = k
         self.gamma = gamma
@@ -102,6 +149,8 @@ class Neighbor(Bias):
         self.iteration = iteration
 
     def init_param(self, ui_mat):
+        ''' @see Model.init_param.
+        '''
         super(Neighbor, self).init_param(ui_mat)
         # self.bu = np.zeros(ui_mat.shape[0])
         # self.bi = np.zeros(ui_mat.shape[1])
@@ -109,7 +158,8 @@ class Neighbor(Bias):
         self.parameters += [self.w]
 
     def init_non_param(self, ui_mat):
-        # self.mu = ui_mat.sum()/ui_mat.getnnz()
+        ''' @see Model.init_non_param.
+        '''
         super(Neighbor, self).init_non_param(ui_mat)
 
         k = min(self.k, ui_mat.shape[0])
@@ -124,6 +174,8 @@ class Neighbor(Bias):
         self.cached_Rkui = {}
 
     def gradient(self, ui_mat, pred_data):
+        ''' @see Model.gradient.
+        '''
         rows, cols = ui_mat.nonzero()
 
         N = np.ones(len(rows))
@@ -174,6 +226,11 @@ class Neighbor(Bias):
         return gradient
 
     def get_Rkui(self, u, i):
+        ''' Get the intersection of (1) k most similar user to u and (2) user who rated item i. See report for more information.
+        @param u: user id.
+        @param i: item id.
+        @return list.
+        '''
         if (u,i) not in self.cached_Rkui:
             Rkui = set(self.u_neighbors[u]).intersection(set(self.rated_user[i]))
             Rkui = sorted(list(Rkui))
@@ -194,6 +251,8 @@ class Neighbor(Bias):
         return pred
 
     def predict(self, ui_mat, test_mat):
+        ''' @see Model.predict.
+        '''
         pred = super(Neighbor, self).predict(ui_mat, test_mat)
         rows, cols = test_mat.nonzero()
 

@@ -15,7 +15,7 @@ import pandas as pd
 import similarity
 from model import Simple_sim
 from model import Bias
-from model import Neighbor 
+from model import Neighbor
 from scipy import sparse
 
 
@@ -112,7 +112,10 @@ def preprocess_data(fname):
 
 
 def get_mse(pred, actual):
-    # pred = np.asarray(pred).flatten()
+    '''Calculate mean square error.
+    @param pred: 1D array. Length of pred should be equal to actual.getnnz()
+    @actual: 2D sparse matrix.
+    '''
     pred = np.asarray(pred).flatten()
     actual = np.asarray(actual[actual.nonzero()]).flatten()
     assert(len(pred)==len(actual))
@@ -120,7 +123,11 @@ def get_mse(pred, actual):
 
 
 def doIt(modelCls, doItemBased=True, **model_args):
-
+    '''Compare different models.
+    @modelCls class: The class of the target model.
+    @param doItemBased: boolean. WHether to do item based method by transposing the matrix.
+    @param model_args: args for initializing modelCls.
+    '''
     print
     print('='*20)
     print('Model: {}'.format(modelCls.__name__))
