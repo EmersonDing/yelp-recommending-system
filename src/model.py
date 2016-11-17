@@ -37,45 +37,53 @@ class Bias(object):
         self.lambda4 = lambda4
         self.iteration = iteration
 
-    def train(self, ui_mat):
-        gamma, lambda4 = self.gamma, self.lambda4  # just to make it short
+    def init_non_param(self, ui_mat):
         self.mu = ui_mat.sum()/ui_mat.getnnz()
+
+    def init_param(self, ui_mat):
         self.bu = np.zeros(ui_mat.shape[0])
         self.bi = np.zeros(ui_mat.shape[1])
+        self.parameters = [self.bu, self.bi]
+        return self.parameters
 
+    def gradient(self, ui_mat):
         rows, cols = ui_mat.nonzero()
+
         user_nnz = ui_mat.getnnz(axis=1)
         item_nnz = ui_mat.getnnz(axis=0)
         user_sum = ui_mat.sum(axis=1).A1
         item_sum = ui_mat.sum(axis=0).A1
 
-        for _ in range(self.iteration):
-            pred_data = self.predict(ui_mat, ui_mat)
-            pred_coo = sparse.coo_matrix((pred_data, (rows, cols)))
-            pred_user_sum = pred_coo.tocsr().sum(axis=1).A1
-            pred_item_sum = pred_coo.tocsc().sum(axis=0).A1
-            self.bu += gamma * (user_sum-pred_user_sum) - gamma * lambda4 * user_nnz * self.bu
-            self.bi += gamma * (item_sum-pred_item_sum) - gamma * lambda4 * item_nnz * self.bi
+        pred_data = self.predict(ui_mat, ui_mat)
+        pred_coo = sparse.coo_matrix((pred_data, (rows, cols)))
+        pred_user_sum = pred_coo.tocsr().sum(axis=1).A1
+        pred_item_sum = pred_coo.tocsc().sum(axis=0).A1
 
-    def train_slow(self, ui_mat, gamma=0.005, lambda4=0.002, iteration=15):
-        self.mu = ui_mat.sum()/ui_mat.getnnz()
-        self.bu = np.zeros(ui_mat.shape[0])
-        self.bi = np.zeros(ui_mat.shape[1])
+        return [(user_sum-pred_user_sum) - self.lambda4 * user_nnz * self.bu,
+                (item_sum-pred_item_sum) - self.lambda4 * item_nnz * self.bi]
 
+    def gradient_slow(self, ui_mat):
         rows, cols = ui_mat.nonzero()
-        for _ in range(iteration):
-            pred_data = self.predict(ui_mat, ui_mat)
-            pred_csr = sparse.csr_matrix((pred_data, (rows, cols)))
+        pred_data = self.predict(ui_mat, ui_mat)
+        pred_csr = sparse.csr_matrix((pred_data, (rows, cols)))
 
-            deta_bu = np.zeros_like(self.bu)
-            deta_bi = np.zeros_like(self.bi)
-            for u, i in zip(rows, cols):
-                eui = ui_mat[u,i] - pred_csr[u,i]
-                deta_bu[u] += (eui - lambda4* self.bu[u])
-                deta_bi[i] += (eui - lambda4* self.bi[i])
+        deta_bu = np.zeros_like(self.bu)
+        deta_bi = np.zeros_like(self.bi)
+        for u, i in zip(rows, cols):
+            eui = ui_mat[u,i] - pred_csr[u,i]
+            deta_bu[u] += (eui - self.lambda4 * self.bu[u])
+            deta_bi[i] += (eui - self.lambda4 * self.bi[i])
+        return [deta_bu, deta_bi]
 
-            self.bu += gamma * deta_bu
-            self.bi += gamma * deta_bi
+    def train(self, ui_mat):
+        self.init_non_param(ui_mat)
+        self.init_param(ui_mat)
+
+        for _ in range(self.iteration):
+            gradient = self.gradient(ui_mat)
+            # gradient = self.gradient_slow(ui_mat)
+            for param, g in zip(self.parameters, gradient):
+                param += self.gamma * g
 
     def predict(self, ui_mat, test_mat):
         rows, cols = test_mat.nonzero()
@@ -83,7 +91,7 @@ class Bias(object):
         return p
 
 
-class Neighbor(object):
+class Neighbor(Bias):
     def __init__(self, sim_fn, k=500, gamma=0.005, lambda4=0.002, iteration=15, **kwargs):
         super(Neighbor, self).__init__(**kwargs)
         self.sim_fn = sim_fn
@@ -92,59 +100,87 @@ class Neighbor(object):
         self.lambda4 = lambda4
         self.iteration = iteration
 
-    def train(self, ui_mat):
-        gamma, lambda4 = self.gamma, self.lambda4  # just to make it short
+    def init_param(self, ui_mat):
+        super(Neighbor, self).init_param(ui_mat)
+        # self.bu = np.zeros(ui_mat.shape[0])
+        # self.bi = np.zeros(ui_mat.shape[1])
+        self.w = np.zeros((ui_mat.shape[0], ui_mat.shape[0]))  # TODO, could use less memory
+        self.parameters += [self.w]
+
+    def init_non_param(self, ui_mat):
+        # self.mu = ui_mat.sum()/ui_mat.getnnz()
+        super(Neighbor, self).init_non_param(ui_mat)
+
         k = min(self.k, ui_mat.shape[0])
         ui_mat_csc = ui_mat.tocsc()
-
-        self.mu = ui_mat.sum()/ui_mat.getnnz()
-        self.bu = np.zeros(ui_mat.shape[0])
-        self.bi = np.zeros(ui_mat.shape[1])
-
         self.sim_mat = self.sim_fn(ui_mat)
         sorted_sim_mat = np.argsort(self.sim_mat)[:,::-1]
         # k nearest neighbor of user u
         self.u_neighbors = sorted_sim_mat[:, 1:k+1]
         # user who rates item i
         self.rated_user = [ui_mat_csc[:,i].indices for i in range(ui_mat_csc.shape[1])]
-        self.w = np.zeros_like(self.sim_mat)  # TODO, could use less memory
         # cahche of Rkui, user u's neighbor for item i (intersection of k nearest neighbor of user u and users that rated item i)
         self.cached_Rkui = {}
 
+    def gradient(self, ui_mat):
+        gradient = super(Neighbor, self).gradient(ui_mat)
+
+        pred_data = self.predict(ui_mat, ui_mat)
         rows, cols = ui_mat.nonzero()
-        # number of items user u rated
-        user_nnz = ui_mat.getnnz(axis=1)
-        # number of users that rated item i
-        item_nnz = ui_mat.getnnz(axis=0)
-        # user u's rating sum
-        user_sum = ui_mat.sum(axis=1).A1
-        # item i's rating sum
-        item_sum = ui_mat.sum(axis=0).A1
+
+        N = np.ones(len(rows))
+        eui = (np.asarray(ui_mat[rows, cols]).flatten() - pred_data)[:, None]
+        mask = np.zeros((len(rows), ui_mat.shape[0]))
+        w = self.w[rows, :]
+        R = ui_mat[:, cols].T.toarray()
+        bu = np.repeat(self.bu[None, :], axis=0, repeats=len(rows))
+        bi = self.bi[cols][:, None]
+
+        for ind, (u, i) in enumerate(zip(rows, cols)):
+            Rkui = self.get_Rkui(u, i)
+            if len(Rkui)>0:
+                N[ind] = 1./math.sqrt(len(Rkui))
+            mask[ind, Rkui] = 1
+
+        deta = mask * (N[:, None]* eui * (R - (self.mu + bu+bi)) - self.lambda4 * w)
+        gw = np.zeros_like(self.w)
+
+        for ind, u in enumerate(rows):
+            gw[u] += deta[ind]
+        gradient += [gw]
+
+        return gradient
+
+    def gradient_slow(self, ui_mat):
+        gradient = super(Neighbor, self).gradient_slow(ui_mat)
+
+        rows, cols = ui_mat.nonzero()
+
+        pred_data = self.predict(ui_mat, ui_mat)
+        pred_csr = sparse.csr_matrix((pred_data, (rows, cols)))
+        # do neighbor model
+
+        gw = np.zeros_like(self.w)
+        for u, i in zip(rows, cols):
+            eui = ui_mat[u,i] - pred_csr[u, i]
+            Rkui = self.get_Rkui(u, i)
+            if len(Rkui)>0:
+                deta = 1./math.sqrt(len(Rkui)) * eui
+                deta *= (ui_mat[Rkui,i].toarray().flatten()-(self.mu+self.bu[Rkui]+self.bi[i]))
+                deta -= self.lambda4 * self.w[u, Rkui]
+                gw[u, Rkui] += deta
+
+        gradient += [gw]
+        return gradient
+
+    def train(self, ui_mat):
+        self.init_non_param(ui_mat)
+        self.init_param(ui_mat)
 
         for _ in range(self.iteration):
-            # do bias model
-            pred_data = self.predict(ui_mat, ui_mat)
-            pred_coo = sparse.coo_matrix((pred_data, (rows, cols)))
-            pred_csr = pred_coo.tocsr()
-            pred_csc = pred_coo.tocsc()
-
-            pred_user_sum = pred_csr.sum(axis=1).A1
-            pred_item_sum = pred_csc.sum(axis=0).A1
-            deta_bu = gamma * (user_sum-pred_user_sum) - gamma * lambda4 * user_nnz * self.bu
-            deta_bi = gamma * (item_sum-pred_item_sum) - gamma * lambda4 * item_nnz * self.bi
-
-            # do neighbor model
-            for u, i in zip(rows, cols):
-                eui = ui_mat[u,i] - pred_csr[u, i]
-                Rkui = self.get_Rkui(u, i)
-                if len(Rkui)>0:
-                    deta = 1./math.sqrt(len(Rkui)) * eui
-                    deta *= (ui_mat[Rkui,i].toarray().flatten()-(self.mu+self.bu[Rkui]+self.bi[i]))
-                    deta -= lambda4 * self.w[u, Rkui]
-                    self.w[u, Rkui] += gamma * deta
-
-            self.bu += deta_bu
-            self.bi += deta_bi
+            gradient = self.gradient(ui_mat)
+            for param, g in zip(self.parameters, gradient):
+                param += self.gamma * g
 
     def get_Rkui(self, u, i):
         if (u,i) not in self.cached_Rkui:
@@ -155,13 +191,34 @@ class Neighbor(object):
         else:
             return self.cached_Rkui[(u,i)]
 
-    def predict(self, ui_mat, test_mat):
+    def predict_slow(self, ui_mat, test_mat):
         rows, cols = test_mat.nonzero()
         bui = self.bu[rows] + self.bi[cols] + self.mu
-        pred_data = bui
+        pred = bui
         for ind, (u, i) in enumerate(zip(rows, cols)):
             Rkui = self.get_Rkui(u, i)
             if len(Rkui)>0:
-                pred_data[ind] += 1./math.sqrt(len(Rkui)) * self.w[u, Rkui].dot(ui_mat[Rkui, i].toarray().flatten() - (self.mu+self.bu[Rkui]+self.bi[i]))
+                pred[ind] += 1./math.sqrt(len(Rkui)) * self.w[u, Rkui].dot(ui_mat[Rkui, i].toarray().flatten() - (self.mu+self.bu[Rkui]+self.bi[i]))
 
-        return pred_data
+        return pred
+
+    def predict(self, ui_mat, test_mat):
+        pred = super(Neighbor, self).predict(ui_mat, test_mat)
+        rows, cols = test_mat.nonzero()
+
+        N = np.ones(len(rows))
+        mask = np.zeros((len(rows), ui_mat.shape[0]))
+        w = self.w[rows, :]
+        R = ui_mat[:, cols].T.toarray()
+        bu = np.repeat(self.bu[None, :], axis=0, repeats=len(rows))
+        bi = self.bi[cols][:, None]
+
+        for ind, (u, i) in enumerate(zip(rows, cols)):
+            Rkui = self.get_Rkui(u, i)
+            if len(Rkui)>0:
+                N[ind] = 1./math.sqrt(len(Rkui))
+            mask[ind, Rkui] = 1
+
+        tmp = mask * w * (R - (self.mu + bu+bi))
+        pred += N * tmp.sum(axis=1)
+        return pred

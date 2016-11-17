@@ -119,7 +119,7 @@ def get_mse(pred, actual):
     return np.sum((pred-actual)**2)/len(pred)
 
 
-def doIt(modelCls, **model_args):
+def doIt(modelCls, doItemBased=True, **model_args):
 
     print
     print('='*20)
@@ -130,10 +130,11 @@ def doIt(modelCls, **model_args):
     user_prediction = user_model.predict(train_mat, test_mat)
     print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
 
-    item_model = modelCls(**model_args)
-    item_model.train(train_mat.T)
-    item_prediction = item_model.predict(train_mat.T, test_mat.T)
-    print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_mat.T)))
+    if doItemBased:
+        item_model = modelCls(**model_args)
+        item_model.train(train_mat.T)
+        item_prediction = item_model.predict(train_mat.T, test_mat.T)
+        print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_mat.T)))
 
 if __name__ == '__main__':
 
@@ -156,7 +157,7 @@ if __name__ == '__main__':
             data = pickle.load(f)
             train_mat, test_mat = data['train'], data['test']
 
-    doIt(Simple_sim, sim_fn=similarity.cosine_sim)
+    # doIt(Simple_sim, sim_fn=similarity.cosine_sim)
     # Note that to fairly compare Bias and Neigbor, iteration should be set to the same number
-    doIt(Bias, iteration=5)
-    doIt(Neighbor, sim_fn=similarity.cosine_sim, k=100, iteration=5)
+    doIt(Bias, iteration=15)
+    doIt(Neighbor, doItemBased=False, sim_fn=similarity.cosine_sim, k=100, iteration=15)
