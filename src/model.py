@@ -31,7 +31,19 @@ class Simple_sim(object):
         return np.asarray(U.multiply(S.T).sum(axis=0)).flatten() / N
 
 
-class Bias(object):
+class Model(object):
+    def train(self, ui_mat):
+        self.init_non_param(ui_mat)
+        self.init_param(ui_mat)
+
+        for _ in range(self.iteration):
+            pred_data = self.predict(ui_mat, ui_mat)
+            gradient = self.gradient(ui_mat, pred_data)
+            for param, g in zip(self.parameters, gradient):
+                param += self.gamma * g
+
+
+class Bias(Model):
     def __init__(self, gamma=0.005, lambda4=0.002, iteration=15):
         self.gamma = gamma
         self.lambda4 = lambda4
@@ -46,7 +58,7 @@ class Bias(object):
         self.parameters = [self.bu, self.bi]
         return self.parameters
 
-    def gradient(self, ui_mat):
+    def gradient(self, ui_mat, pred_data):
         rows, cols = ui_mat.nonzero()
 
         user_nnz = ui_mat.getnnz(axis=1)
@@ -54,7 +66,6 @@ class Bias(object):
         user_sum = ui_mat.sum(axis=1).A1
         item_sum = ui_mat.sum(axis=0).A1
 
-        pred_data = self.predict(ui_mat, ui_mat)
         pred_coo = sparse.coo_matrix((pred_data, (rows, cols)))
         pred_user_sum = pred_coo.tocsr().sum(axis=1).A1
         pred_item_sum = pred_coo.tocsc().sum(axis=0).A1
@@ -74,16 +85,6 @@ class Bias(object):
             deta_bu[u] += (eui - self.lambda4 * self.bu[u])
             deta_bi[i] += (eui - self.lambda4 * self.bi[i])
         return [deta_bu, deta_bi]
-
-    def train(self, ui_mat):
-        self.init_non_param(ui_mat)
-        self.init_param(ui_mat)
-
-        for _ in range(self.iteration):
-            gradient = self.gradient(ui_mat)
-            # gradient = self.gradient_slow(ui_mat)
-            for param, g in zip(self.parameters, gradient):
-                param += self.gamma * g
 
     def predict(self, ui_mat, test_mat):
         rows, cols = test_mat.nonzero()
@@ -122,10 +123,7 @@ class Neighbor(Bias):
         # cahche of Rkui, user u's neighbor for item i (intersection of k nearest neighbor of user u and users that rated item i)
         self.cached_Rkui = {}
 
-    def gradient(self, ui_mat):
-        gradient = super(Neighbor, self).gradient(ui_mat)
-
-        pred_data = self.predict(ui_mat, ui_mat)
+    def gradient(self, ui_mat, pred_data):
         rows, cols = ui_mat.nonzero()
 
         N = np.ones(len(rows))
@@ -147,6 +145,8 @@ class Neighbor(Bias):
 
         for ind, u in enumerate(rows):
             gw[u] += deta[ind]
+
+        gradient = super(Neighbor, self).gradient(ui_mat, pred_data)
         gradient += [gw]
 
         return gradient
@@ -172,15 +172,6 @@ class Neighbor(Bias):
 
         gradient += [gw]
         return gradient
-
-    def train(self, ui_mat):
-        self.init_non_param(ui_mat)
-        self.init_param(ui_mat)
-
-        for _ in range(self.iteration):
-            gradient = self.gradient(ui_mat)
-            for param, g in zip(self.parameters, gradient):
-                param += self.gamma * g
 
     def get_Rkui(self, u, i):
         if (u,i) not in self.cached_Rkui:

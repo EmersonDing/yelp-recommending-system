@@ -157,7 +157,6 @@ if __name__ == '__main__':
             data = pickle.load(f)
             train_mat, test_mat = data['train'], data['test']
 
-    # doIt(Simple_sim, sim_fn=similarity.cosine_sim)
-    # Note that to fairly compare Bias and Neigbor, iteration should be set to the same number
+    doIt(Simple_sim, sim_fn=similarity.cosine_sim)
     doIt(Bias, iteration=15)
     doIt(Neighbor, doItemBased=False, sim_fn=similarity.cosine_sim, k=100, iteration=15)
