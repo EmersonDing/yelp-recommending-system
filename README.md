@@ -1,7 +1,7 @@
 # Directory
 * raw_data: data parsed from data base
     * stars.csv contains user_id, business_id and star of it. 
-* preprocessed_data: intermediate result after preprocessing raw data
+* preprocessed_data: intermediate result after preprocessing raw data and processing code
 * src: all source scripts
     * test: all test cases (see below)
     * main.py: compare different models
