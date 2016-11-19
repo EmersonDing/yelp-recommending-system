@@ -122,7 +122,7 @@ def get_mse(pred, actual):
     return np.sum((pred-actual)**2)/len(pred)
 
 
-def doIt(modelCls, doItemBased=True, **model_args):
+def doIt(modelCls, user_based=True, item_based=True, **model_args):
     '''Compare different models.
     @modelCls class: The class of the target model.
     @param doItemBased: boolean. WHether to do item based method by transposing the matrix.
@@ -132,12 +132,13 @@ def doIt(modelCls, doItemBased=True, **model_args):
     print('='*20)
     print('Model: {}'.format(modelCls.__name__))
     print('Args: {}'.format(model_args))
-    user_model = modelCls(**model_args)
-    user_model.train(train_mat)
-    user_prediction = user_model.predict(train_mat, test_mat)
-    print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
+    if user_based:
+        user_model = modelCls(**model_args)
+        user_model.train(train_mat)
+        user_prediction = user_model.predict(train_mat, test_mat)
+        print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
 
-    if doItemBased:
+    if item_based:
         item_model = modelCls(**model_args)
         item_model.train(train_mat.T)
         item_prediction = item_model.predict(train_mat.T, test_mat.T)
@@ -166,4 +167,4 @@ if __name__ == '__main__':
 
     doIt(Simple_sim, sim_fn=similarity.cosine_sim)
     doIt(Bias, iteration=15)
-    doIt(Neighbor, doItemBased=False, sim_fn=similarity.cosine_sim, k=100, iteration=15)
+    doIt(Neighbor, item_based=False, sim_fn=similarity.cosine_sim, k=100, iteration=15)

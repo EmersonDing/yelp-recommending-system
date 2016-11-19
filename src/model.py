@@ -152,8 +152,6 @@ class Neighbor(Bias):
         ''' @see Model.init_param.
         '''
         super(Neighbor, self).init_param(ui_mat)
-        # self.bu = np.zeros(ui_mat.shape[0])
-        # self.bi = np.zeros(ui_mat.shape[1])
         self.w = np.zeros((ui_mat.shape[0], ui_mat.shape[0]))  # TODO, could use less memory
         self.parameters += [self.w]
 
@@ -163,13 +161,12 @@ class Neighbor(Bias):
         super(Neighbor, self).init_non_param(ui_mat)
 
         k = min(self.k, ui_mat.shape[0])
-        ui_mat_csc = ui_mat.tocsc()
         self.sim_mat = self.sim_fn(ui_mat)
         sorted_sim_mat = np.argsort(self.sim_mat)[:,::-1]
         # k nearest neighbor of user u
         self.u_neighbors = sorted_sim_mat[:, 1:k+1]
         # user who rates item i
-        self.rated_user = [ui_mat_csc[:,i].indices for i in range(ui_mat_csc.shape[1])]
+        self.rated_user = [ui_mat.tocsc()[:,i].indices for i in range(ui_mat.shape[1])]
         # cahche of Rkui, user u's neighbor for item i (intersection of k nearest neighbor of user u and users that rated item i)
         self.cached_Rkui = {}
 
