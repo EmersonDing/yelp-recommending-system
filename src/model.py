@@ -7,7 +7,7 @@ class Simple_sim(object):
     def __init__(self, sim_fn):
         self.sim_fn = sim_fn
 
-    def train(self, ui_mat):
+    def train(self, ui_mat, test_mat):
         # sim_mat
         # shape: (# item, # item) for item based
         # shape: (# user, # user) for user based
@@ -32,11 +32,11 @@ class Simple_sim(object):
 
 
 class Model(object):
-    def train(self, ui_mat):
+    def train(self, ui_mat, test_mat):
         ''' Do batch gradient descent to minimize mse error.
         @param ui_mat: 2D sparse matrix. Training matrix.
         '''
-        self.init_non_param(ui_mat)
+        self.init_non_param(ui_mat, test_mat)
         self.init_param(ui_mat)
 
         for _ in range(self.iteration):
@@ -51,7 +51,7 @@ class Model(object):
         '''
         raise NotImplementedError
 
-    def init_non_param(self, ui_mat):
+    def init_non_param(self, ui_mat, test_mat):
         '''Initialize model parameters that are not updated in each iteration during training (but you don't want to recompute them every iteration). Should be implemented by derived class.
         @param ui_mat: 2D sparse matrix. Training matrix.
         '''
@@ -83,7 +83,7 @@ class Bias(Model):
         self.lambda4 = lambda4
         self.iteration = iteration
 
-    def init_non_param(self, ui_mat):
+    def init_non_param(self, ui_mat, test_mat):
         ''' @see Model.init_non_param.
         '''
         self.mu = ui_mat.sum()/ui_mat.getnnz()
@@ -155,39 +155,47 @@ class Neighbor(Bias):
         self.w = np.zeros((ui_mat.shape[0], ui_mat.shape[0]))  # TODO, could use less memory
         self.parameters += [self.w]
 
-    def init_non_param(self, ui_mat):
+    def init_non_param(self, ui_mat, test_mat):
         ''' @see Model.init_non_param.
         '''
-        super(Neighbor, self).init_non_param(ui_mat)
+        super(Neighbor, self).init_non_param(ui_mat, test_mat)
 
         k = min(self.k, ui_mat.shape[0])
         self.sim_mat = self.sim_fn(ui_mat)
         sorted_sim_mat = np.argsort(self.sim_mat)[:,::-1]
         # k nearest neighbor of user u
-        self.u_neighbors = sorted_sim_mat[:, 1:k+1]
+        u_neighbors = sorted_sim_mat[:, 1:k+1]
         # user who rates item i
-        self.rated_user = [ui_mat.tocsc()[:,i].indices for i in range(ui_mat.shape[1])]
-        # cahche of Rkui, user u's neighbor for item i (intersection of k nearest neighbor of user u and users that rated item i)
-        self.cached_Rkui = {}
+        rated_user = [ui_mat.tocsc()[:,i].indices for i in range(ui_mat.shape[1])]
+
+        def get_mat_info(mat):
+            rows, cols = mat.nonzero()
+            N = np.ones(len(rows))
+            MASK= np.zeros((len(rows), mat.shape[0]))
+
+            for ind, (u, i) in enumerate(zip(rows, cols)):
+                Rkui = set(u_neighbors[u]).intersection(set(rated_user[i]))
+                Rkui = sorted(list(Rkui))
+                if len(Rkui)>0:
+                    N[ind] = 1./math.sqrt(len(Rkui))
+                MASK[ind, Rkui] = 1
+            return {'N': N, 'MASK': MASK}
+
+        self.mat_info = {id(ui_mat): get_mat_info(ui_mat),
+                         id(test_mat): get_mat_info(test_mat)}
 
     def gradient(self, ui_mat, pred_data):
         ''' @see Model.gradient.
         '''
         rows, cols = ui_mat.nonzero()
-
-        N = np.ones(len(rows))
-        eui = (np.asarray(ui_mat[rows, cols]).flatten() - pred_data)[:, None]
-        mask = np.zeros((len(rows), ui_mat.shape[0]))
-        w = self.w[rows, :]
+        mat_info = self.mat_info[id(ui_mat)]
+        N, mask = mat_info['N'], mat_info['MASK']
         R = ui_mat[:, cols].T.toarray()
+
+        eui = (np.asarray(ui_mat[rows, cols]).flatten() - pred_data)[:, None]
+        w = self.w[rows, :]
         bu = np.repeat(self.bu[None, :], axis=0, repeats=len(rows))
         bi = self.bi[cols][:, None]
-
-        for ind, (u, i) in enumerate(zip(rows, cols)):
-            Rkui = self.get_Rkui(u, i)
-            if len(Rkui)>0:
-                N[ind] = 1./math.sqrt(len(Rkui))
-            mask[ind, Rkui] = 1
 
         deta = mask * (N[:, None]* eui * (R - (self.mu + bu+bi)) - self.lambda4 * w)
         gw = np.zeros_like(self.w)
@@ -222,20 +230,6 @@ class Neighbor(Bias):
         gradient += [gw]
         return gradient
 
-    def get_Rkui(self, u, i):
-        ''' Get the intersection of (1) k most similar user to u and (2) user who rated item i. See report for more information.
-        @param u: user id.
-        @param i: item id.
-        @return list.
-        '''
-        if (u,i) not in self.cached_Rkui:
-            Rkui = set(self.u_neighbors[u]).intersection(set(self.rated_user[i]))
-            Rkui = sorted(list(Rkui))
-            self.cached_Rkui[(u,i)] = Rkui
-            return Rkui
-        else:
-            return self.cached_Rkui[(u,i)]
-
     def predict_slow(self, ui_mat, test_mat):
         rows, cols = test_mat.nonzero()
         bui = self.bu[rows] + self.bi[cols] + self.mu
@@ -253,18 +247,13 @@ class Neighbor(Bias):
         pred = super(Neighbor, self).predict(ui_mat, test_mat)
         rows, cols = test_mat.nonzero()
 
-        N = np.ones(len(rows))
-        mask = np.zeros((len(rows), ui_mat.shape[0]))
+        mat_info = self.mat_info[id(test_mat)]
+        N, mask = mat_info['N'], mat_info['MASK']
+
         w = self.w[rows, :]
         R = ui_mat[:, cols].T.toarray()
         bu = np.repeat(self.bu[None, :], axis=0, repeats=len(rows))
         bi = self.bi[cols][:, None]
-
-        for ind, (u, i) in enumerate(zip(rows, cols)):
-            Rkui = self.get_Rkui(u, i)
-            if len(Rkui)>0:
-                N[ind] = 1./math.sqrt(len(Rkui))
-            mask[ind, Rkui] = 1
 
         tmp = mask * w * (R - (self.mu + bu+bi))
         pred += N * tmp.sum(axis=1)
