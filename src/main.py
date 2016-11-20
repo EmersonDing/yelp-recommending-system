@@ -16,6 +16,7 @@ import similarity
 from model import Simple_sim
 from model import Bias
 from model import Neighbor
+from model import Factor
 from scipy import sparse
 
 
@@ -140,7 +141,7 @@ def doIt(modelCls, user_based=True, item_based=True, **model_args):
 
     if item_based:
         item_model = modelCls(**model_args)
-        item_model.train(train_mat.T)
+        item_model.train(train_mat.T, test_mat.T)
         item_prediction = item_model.predict(train_mat.T, test_mat.T)
         print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_mat.T)))
 
@@ -166,5 +167,6 @@ if __name__ == '__main__':
             train_mat, test_mat = data['train'], data['test']
 
     # doIt(Simple_sim, sim_fn=similarity.cosine_sim)
-    # doIt(Bias, iteration=15)
-    doIt(Neighbor, item_based=False, sim_fn=similarity.cosine_sim, k=100, iteration=5)
+    doIt(Bias, iteration=10)
+    doIt(Factor, item_based=False, emb_dim=100, iteration=10)
+    doIt(Neighbor, item_based=False, sim_fn=similarity.cosine_sim, k=100, iteration=10)

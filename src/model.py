@@ -258,3 +258,68 @@ class Neighbor(Bias):
         tmp = mask * w * (R - (self.mu + bu+bi))
         pred += N * tmp.sum(axis=1)
         return pred
+
+
+class Factor(Bias):
+    def __init__(self, emb_dim=100, gamma=0.005, lambda4=0.002, iteration=15):
+        ''' Factor model, refer to report.
+        @param gamma: float. learning rate.
+        @param lambda4: float. regularition weight.
+        @param iteration: sgd iteration.
+        '''
+        self.emb_dim = emb_dim
+        self.gamma = gamma
+        self.lambda4 = lambda4
+        self.iteration = iteration
+
+    def init_param(self, ui_mat):
+        ''' @see Model.init_param.
+        '''
+        super(Factor, self).init_param(ui_mat)
+        num_user, num_item = ui_mat.shape
+        self.pu = np.random.random((num_user, self.emb_dim))/2
+        self.qi = np.random.random((num_item, self.emb_dim))/2
+        self.parameters += [self.pu, self.qi]
+
+    def init_non_param(self, ui_mat, test_mat):
+        ''' @see Model.init_non_param.
+        '''
+        super(Factor, self).init_non_param(ui_mat, test_mat)
+
+    def gradient(self, ui_mat, pred_data):
+        ''' @see Model.gradient.
+        '''
+
+        rows, cols = ui_mat.nonzero()
+        eui = (np.asarray(ui_mat[rows, cols]).flatten() - pred_data)[:, None]
+
+        P = self.pu[rows, :]
+        Q = self.qi[cols, :]
+
+        detaP = eui * Q - self.lambda4 * P
+        detaQ = eui * P - self.lambda4 * Q
+
+        gradient = super(Factor, self).gradient(ui_mat, pred_data)
+
+        gp = np.zeros_like(self.pu)
+        gq = np.zeros_like(self.qi)
+
+        for ind, (u, i) in enumerate(zip(rows, cols)):
+            gp[u] += detaP[ind]
+            gq[i] += detaQ[ind]
+
+        gradient = super(Factor, self).gradient(ui_mat, pred_data)
+        gradient += [gp, gq]
+
+        return gradient
+
+    def predict(self, ui_mat, test_mat):
+        ''' @see Model.predict.
+        '''
+        pred = super(Factor, self).predict(ui_mat, test_mat)
+        rows, cols = test_mat.nonzero()
+
+        P = self.pu[rows, :]
+        Q = self.qi[cols, :]
+        pred += np.sum(P*Q, axis=1)/self.emb_dim
+        return pred
