@@ -133,6 +133,11 @@ class Bias(Model):
         p = self.bu[rows] + self.bi[cols] + self.mu
         return p
 
+    def predict_slow(self, ui_mat, test_mat):
+        rows, cols = test_mat.nonzero()
+        p = self.bu[rows] + self.bi[cols] + self.mu
+        return p
+
 
 class Neighbor(Bias):
     def __init__(self, sim_fn, k=500, gamma=0.005, lambda4=0.002, iteration=15):
@@ -171,15 +176,15 @@ class Neighbor(Bias):
         def get_mat_info(mat):
             rows, cols = mat.nonzero()
             N = np.ones(len(rows))
-            MASK= np.zeros((len(rows), mat.shape[0]))
+            RKUI= np.zeros((len(rows), mat.shape[0]))
 
             for ind, (u, i) in enumerate(zip(rows, cols)):
                 Rkui = set(u_neighbors[u]).intersection(set(rated_user[i]))
                 Rkui = sorted(list(Rkui))
                 if len(Rkui)>0:
                     N[ind] = 1./math.sqrt(len(Rkui))
-                MASK[ind, Rkui] = 1
-            return {'N': N, 'MASK': MASK}
+                RKUI[ind, Rkui] = 1
+            return {'N': N, 'RKUI': RKUI}
 
         self.mat_info = {id(ui_mat): get_mat_info(ui_mat),
                          id(test_mat): get_mat_info(test_mat)}
@@ -189,7 +194,7 @@ class Neighbor(Bias):
         '''
         rows, cols = ui_mat.nonzero()
         mat_info = self.mat_info[id(ui_mat)]
-        N, mask = mat_info['N'], mat_info['MASK']
+        N, Rkui = mat_info['N'], mat_info['RKUI']
         R = ui_mat[:, cols].T.toarray()
 
         eui = (np.asarray(ui_mat[rows, cols]).flatten() - pred_data)[:, None]
@@ -197,7 +202,7 @@ class Neighbor(Bias):
         bu = np.repeat(self.bu[None, :], axis=0, repeats=len(rows))
         bi = self.bi[cols][:, None]
 
-        deta = mask * (N[:, None]* eui * (R - (self.mu + bu+bi)) - self.lambda4 * w)
+        deta = Rkui * (N[:, None]* eui * (R - (self.mu + bu+bi)) - self.lambda4 * w)
         gw = np.zeros_like(self.w)
 
         for ind, u in enumerate(rows):
@@ -232,13 +237,17 @@ class Neighbor(Bias):
 
     def predict_slow(self, ui_mat, test_mat):
         rows, cols = test_mat.nonzero()
-        bui = self.bu[rows] + self.bi[cols] + self.mu
-        pred = bui
-        for ind, (u, i) in enumerate(zip(rows, cols)):
-            Rkui = self.get_Rkui(u, i)
-            if len(Rkui)>0:
-                pred[ind] += 1./math.sqrt(len(Rkui)) * self.w[u, Rkui].dot(ui_mat[Rkui, i].toarray().flatten() - (self.mu+self.bu[Rkui]+self.bi[i]))
+        mat_info = self.mat_info[id(test_mat)]
+        N, Rkui = mat_info['N'], mat_info['RKUI']
+        Rkui = Rkui.astype(bool)
 
+        pred = super(Neighbor, self).predict_slow(ui_mat, test_mat)
+        for ind, (u, i) in enumerate(zip(rows, cols)):
+            rkui = Rkui[ind]
+            w = self.w[u, rkui]
+            r = ui_mat[rkui, i].toarray().flatten()
+            buj = self.mu+self.bu[rkui]+self.bi[i]
+            pred[ind] += N[ind] * w.dot(r - buj)
         return pred
 
     def predict(self, ui_mat, test_mat):
@@ -248,15 +257,12 @@ class Neighbor(Bias):
         rows, cols = test_mat.nonzero()
 
         mat_info = self.mat_info[id(test_mat)]
-        N, mask = mat_info['N'], mat_info['MASK']
+        N, Rkui = mat_info['N'], mat_info['RKUI']
 
         w = self.w[rows, :]
         R = ui_mat[:, cols].T.toarray()
-        bu = np.repeat(self.bu[None, :], axis=0, repeats=len(rows))
-        bi = self.bi[cols][:, None]
-
-        tmp = mask * w * (R - (self.mu + bu+bi))
-        pred += N * tmp.sum(axis=1)
+        buj = self.mu + np.repeat(self.bu[None, :], axis=0, repeats=len(rows)) + self.bi[cols][:, None]
+        pred += N * (Rkui * w * (R - buj)).sum(axis=1)
         return pred
 
 
@@ -277,9 +283,9 @@ class Factor(Bias):
         '''
         super(Factor, self).init_param(ui_mat)
         num_user, num_item = ui_mat.shape
-        self.pu = np.random.random((num_user, self.emb_dim))/2
-        self.qi = np.random.random((num_item, self.emb_dim))/2
-        self.parameters += [self.pu, self.qi]
+        self.P = np.random.random((num_user, self.emb_dim))/2
+        self.Q = np.random.random((num_item, self.emb_dim))/2
+        self.parameters += [self.P, self.Q]
 
     def init_non_param(self, ui_mat, test_mat):
         ''' @see Model.init_non_param.
@@ -293,16 +299,16 @@ class Factor(Bias):
         rows, cols = ui_mat.nonzero()
         eui = (np.asarray(ui_mat[rows, cols]).flatten() - pred_data)[:, None]
 
-        P = self.pu[rows, :]
-        Q = self.qi[cols, :]
+        P = self.P[rows, :]
+        Q = self.Q[cols, :]
 
         detaP = eui * Q - self.lambda4 * P
         detaQ = eui * P - self.lambda4 * Q
 
         gradient = super(Factor, self).gradient(ui_mat, pred_data)
 
-        gp = np.zeros_like(self.pu)
-        gq = np.zeros_like(self.qi)
+        gp = np.zeros_like(self.P)
+        gq = np.zeros_like(self.Q)
 
         for ind, (u, i) in enumerate(zip(rows, cols)):
             gp[u] += detaP[ind]
@@ -319,7 +325,7 @@ class Factor(Bias):
         pred = super(Factor, self).predict(ui_mat, test_mat)
         rows, cols = test_mat.nonzero()
 
-        P = self.pu[rows, :]
-        Q = self.qi[cols, :]
+        P = self.P[rows, :]
+        Q = self.Q[cols, :]
         pred += np.sum(P*Q, axis=1)/self.emb_dim
         return pred
