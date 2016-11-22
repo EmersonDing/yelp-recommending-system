@@ -140,10 +140,11 @@ def doIt(modelCls, user_based=True, item_based=True, **model_args):
         print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
 
     if item_based:
+        train_matT, test_matT = train_mat.T.tocsr(), test_mat.T.tocsr()
         item_model = modelCls(**model_args)
-        item_model.train(train_mat.T, test_mat.T)
-        item_prediction = item_model.predict(train_mat.T, test_mat.T)
-        print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_mat.T)))
+        item_model.train(train_matT, test_matT)
+        item_prediction = item_model.predict(train_matT, test_matT)
+        print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_matT)))
 
 if __name__ == '__main__':
 
@@ -166,7 +167,7 @@ if __name__ == '__main__':
             data = pickle.load(f)
             train_mat, test_mat = data['train'], data['test']
 
-    # doIt(Simple_sim, sim_fn=similarity.cosine_sim)
+    doIt(Simple_sim, sim_fn=similarity.cosine_sim)
     doIt(Bias, iteration=10)
+    doIt(Neighbor, sim_fn=similarity.cosine_sim, k=100, iteration=10)
     doIt(Factor, item_based=False, emb_dim=100, iteration=10)
-    doIt(Neighbor, item_based=False, sim_fn=similarity.cosine_sim, k=100, iteration=10)

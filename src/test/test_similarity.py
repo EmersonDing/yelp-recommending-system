@@ -1,8 +1,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
-from scipy.sparse import csr_matrix
-
 from ..similarity import cosine_sim, pearson_sim, shrunk_sim
+from scipy.sparse import csr_matrix
 
 
 def test_cosine_sim():
