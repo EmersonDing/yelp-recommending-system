@@ -165,11 +165,13 @@ class Neighbor(Bias):
         '''
         super(Neighbor, self).init_non_param(ui_mat, test_mat)
 
-        k = min(self.k, ui_mat.shape[0])
+        if self.k > ui_mat.shape[0]:
+            print('==Warning! k is smaller than row number ({0}). Set k to {0}'.format(ui_mat.shape[0]))
+            self.k = ui_mat.shape[0]
         self.sim_mat = self.sim_fn(ui_mat)
         sorted_sim_mat = np.argsort(self.sim_mat)[:,::-1]
         # k nearest neighbor of user u
-        u_neighbors = sorted_sim_mat[:, 1:k+1]
+        u_neighbors = sorted_sim_mat[:, 1:self.k+1]
         # user who rates item i
         rated_user = [ui_mat.tocsc()[:,i].indices for i in range(ui_mat.shape[1])]
 
