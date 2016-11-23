@@ -154,7 +154,7 @@ if __name__ == '__main__':
     if not os.path.isfile(args.inpf):
         ui_mat = preprocess_data(args.raw_inpf)
         train_mat, test_mat = train_test_split(ui_mat, 0.1)
-        with open(args.inpf, 'w') as f:
+        with open(args.inpf, 'wb') as f:
             print("Saving train/test matrix ..")
             print("{} users".format(ui_mat.shape[0]))
             print("{} items".format(ui_mat.shape[1]))
@@ -163,7 +163,7 @@ if __name__ == '__main__':
 
             pickle.dump({'train':train_mat, 'test': test_mat}, f)
     else:
-        with open(args.inpf, 'r') as f:
+        with open(args.inpf, 'rb') as f:
             data = pickle.load(f)
             train_mat, test_mat = data['train'], data['test']
 
