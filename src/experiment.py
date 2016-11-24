@@ -172,8 +172,15 @@ def diffIteration():
               item_based_Neighbor, user_based_Factor)
 
 def diffKValue():
-    for k in [1, 5, 10, 25, 50, 100]:
-        doIt(Neighbor, sim_fn=similarity.cosine_sim, k=k, iteration=10)
+    result = []
+    user_based_Neighbor = []
+    item_based_Neighbor = []
+    kSet = [1, 5, 10, 25, 50, 100]
+    for k in kSet:
+        result = doIt(Neighbor, sim_fn=similarity.cosine_sim, k=k, iteration=10)
+        user_based_Neighbor.append(result[0])
+        item_based_Neighbor.append(result[1])
+    printPlotDiffK(kSet, user_based_Neighbor, item_based_Neighbor)
 
 def printPlotDiffIteration(iterations, x1, y1, x2, y2, x3):
     line1 = plt.plot(iterations, x1, color = 'red', label = 'user_based_bias')
@@ -182,6 +189,14 @@ def printPlotDiffIteration(iterations, x1, y1, x2, y2, x3):
     line4 = plt.plot(iterations, y2, color = 'blue', label = 'item_based_neighbor')
     line5 = plt.plot(iterations, x3, color = 'green', label = 'factor')
     plt.xlabel('Iterations')
+    plt.ylabel('Mean Square Error')
+    plt.legend(loc='upper left')
+    plt.show()
+
+def printPlotDiffK(k, x, y):
+    line1 = plt.plot(k, x, color = 'red', label = 'user_based_beighbor')
+    line2 = plt.plot(k, y, color = 'blue', label = 'item_based_neighbor')
+    plt.xlabel('k')
     plt.ylabel('Mean Square Error')
     plt.legend(loc='upper left')
     plt.show()
