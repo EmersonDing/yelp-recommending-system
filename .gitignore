@@ -7,3 +7,4 @@ Reviews_30000.csv
 .idea/
 .cache
 *.pkl
+__pycache__/*
