@@ -12,6 +12,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import similarity
 from model import Simple_sim
 from model import Bias
@@ -129,6 +130,7 @@ def doIt(modelCls, user_based=True, item_based=True, **model_args):
     @param doItemBased: boolean. WHether to do item based method by transposing the matrix.
     @param model_args: args for initializing modelCls.
     '''
+    result = []
     print
     print('='*20)
     print('Model: {}'.format(modelCls.__name__))
@@ -137,28 +139,52 @@ def doIt(modelCls, user_based=True, item_based=True, **model_args):
         user_model = modelCls(**model_args)
         user_model.train(train_mat, test_mat)
         user_prediction = user_model.predict(train_mat, test_mat)
-        print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
+        # print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
+        result.append(get_mse(user_prediction, test_mat))
 
     if item_based:
         train_matT, test_matT = train_mat.T.tocsr(), test_mat.T.tocsr()
         item_model = modelCls(**model_args)
         item_model.train(train_matT, test_matT)
         item_prediction = item_model.predict(train_matT, test_matT)
-        print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_matT)))
+        # print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_matT)))
+        result.append(get_mse(item_prediction, test_matT))
+
+    return result
 
 def diffIteration():
-    iteration = 1
-    while iteration < 100:
-        doIt(Bias, iteration=iteration)
-        doIt(Neighbor, sim_fn=similarity.cosine_sim, k=100, iteration=iteration)
-        doIt(Factor, item_based=False, emb_dim=100, iteration=iteration)
-        iteration += 10
+    iterations = [5, 10, 15, 25, 50, 100]
+    user_based_Bias = []
+    item_based_Bias = []
+    user_based_Neighbor = []
+    item_based_Neighbor = []
+    user_based_Factor = []
+    for iteration in iterations:
+        result = doIt(Bias, iteration=iteration)
+        user_based_Bias.append(result[0])
+        item_based_Bias.append(result[1])
+        result = doIt(Neighbor, sim_fn=similarity.cosine_sim, k=100, iteration=iteration)
+        user_based_Neighbor.append(result[0])
+        item_based_Neighbor.append(result[1])
+        result = doIt(Factor, item_based=False, emb_dim=100, iteration=iteration)
+        user_based_Factor.append(result[0])
+        printPlotDiffIteration(iterations, user_based_Bias, item_based_Bias, user_based_Neighbor,
+              item_based_Neighbor, user_based_Factor)
 
 def diffKValue():
-    k = 10
-    while k <= 100:
+    for k in [1, 5, 10, 25, 50, 100]:
         doIt(Neighbor, sim_fn=similarity.cosine_sim, k=k, iteration=10)
-        k += 10
+
+def printPlotDiffIteration(iterations, x1, y1, x2, y2, x3):
+    line1 = plt.plot(iterations, x1, color = 'red', label = 'user_based_bias')
+    line2 = plt.plot(iterations, y1, color = 'orange', label = 'item_based_bias')
+    line3 = plt.plot(iterations, x2, color = 'pink', label = 'user_based_neighbor')
+    line4 = plt.plot(iterations, y2, color = 'blue', label = 'item_based_neighbor')
+    line5 = plt.plot(iterations, x3, color = 'green', label = 'factor')
+    plt.xlabel('Iterations')
+    plt.ylabel('Mean Square Error')
+    plt.legend(loc='upper left')
+    plt.show()
 
 if __name__ == '__main__':
 
@@ -181,5 +207,6 @@ if __name__ == '__main__':
             data = pickle.load(f)
             train_mat, test_mat = data['train'], data['test']
 
+    # printPlot([1,2,3], [4,6,9], [2,3,4], [7,8,9], [1,2,3], [4,3,2])
     # diffIteration()
     diffKValue()
