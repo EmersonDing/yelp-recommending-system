@@ -194,7 +194,7 @@ def printPlotDiffIteration(iterations, x1, y1, x2, y2, x3):
     plt.show()
 
 def printPlotDiffK(k, x, y):
-    line1 = plt.plot(k, x, color = 'red', label = 'user_based_beighbor')
+    line1 = plt.plot(k, x, color = 'red', label = 'user_based_neighbor')
     line2 = plt.plot(k, y, color = 'blue', label = 'item_based_neighbor')
     plt.xlabel('k')
     plt.ylabel('Mean Square Error')
