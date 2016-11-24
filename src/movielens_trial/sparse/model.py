@@ -6,7 +6,7 @@ class Simple_sim(object):
     def __init__(self, sim_fn):
         self.sim_fn = sim_fn
 
-    def train(self, ui_mat):
+    def train(self, ui_mat, test_mat):
         # sim_mat
         # shape: (# item, # item) for item based
         # shape: (# user, # user) for user based
@@ -32,18 +32,32 @@ class Simple_sim(object):
 
 class Topk(object):
     def __init__(self, sim_fn=None, k=50, **kwargs):
-        super(Simple_sim, self).__init__(**kwargs)
+        super(Topk, self).__init__(**kwargs)
         self.sim_fn = sim_fn
         self.k = k
 
     def setK(self, k):
         self.k = k
 
-    def train(self, ui_mat):
+    def train(self, ui_mat, test_mat):
         self.sim_mat = self.sim_fn(ui_mat)
+        sorted_sim_mat = np.argsort(self.sim_mat)[:,::-1]
+        # k nearest neighbor of user u
+        u_neighbors = sorted_sim_mat[:, 1:self.k+1]
+        u_neighbors.sort()
 
-        self.neighbors = np.zeros((self.sim_mat.shape[0], self.sim_mat.shape[0]), dtype=int)
-        self.neighbors = np.argsort(self.sim_mat)[:,::-1]  # do not consider the item itself
+        rows, cols = test_mat.nonzero()
+
+        Sk_rows = []
+        Sk_cols = []
+        Sk_data = []
+        for ind, (u, i) in enumerate(zip(rows, cols)):
+            Sk = list(u_neighbors[u])
+            Sk_rows.extend([ind]*len(Sk))
+            Sk_cols.extend(Sk)
+            Sk_data.extend([1]*len(Sk))
+
+        self.SK = sparse.csr_matrix((Sk_data, (Sk_rows, Sk_cols)), shape=(len(rows), ui_mat.shape[0]))
 
     def predict_slow(self, ui_mat, test_mat):
         pred = test_mat.copy()
@@ -57,4 +71,9 @@ class Topk(object):
         return pred
 
     def predict(self, ui_mat, test_mat):
-        '''Not implemented yet'''
+        rows, cols = test_mat.nonzero()
+        R = ui_mat[:, cols].T
+        S = self.sim_mat[rows, :]
+        MS = self.SK.multiply(sparse.csr_matrix(S))
+        N = np.sum(MS, axis=1)
+        return np.asarray(R.multiply(MS).sum(axis=1)).flatten() / N.flatten()

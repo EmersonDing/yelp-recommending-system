@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import similarity
 from model import Simple_sim
+from model import TopK
 from model import Bias
 from model import Neighbor
 from model import Factor
@@ -168,6 +169,7 @@ if __name__ == '__main__':
             train_mat, test_mat = data['train'], data['test']
 
     doIt(Simple_sim, sim_fn=similarity.cosine_sim)
+    doIt(TopK, k=50, sim_fn=similarity.cosine_sim)
     doIt(Bias, iteration=10)
-    doIt(Neighbor, sim_fn=similarity.cosine_sim, k=100, iteration=10)
-    doIt(Factor, item_based=False, emb_dim=100, iteration=10)
+    doIt(Neighbor, sim_fn=similarity.cosine_sim, k=100, iteration=2)
+    doIt(Factor, emb_dim=100, iteration=10)

@@ -70,21 +70,28 @@ def get_mse(pred, actual):
     return np.sum((pred-actual)**2)/len(pred)
 
 
-def doIt(modelCls, **model_args):
-
+def doIt(modelCls, user_based=True, item_based=True, **model_args):
+    '''Compare different models.
+    @modelCls class: The class of the target model.
+    @param doItemBased: boolean. WHether to do item based method by transposing the matrix.
+    @param model_args: args for initializing modelCls.
+    '''
     print
     print('='*20)
     print('Model: {}'.format(modelCls.__name__))
     print('Args: {}'.format(model_args))
-    user_model = modelCls(**model_args)
-    user_model.train(train_mat)
-    user_prediction = user_model.predict(train_mat, test_mat)
-    print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
+    if user_based:
+        user_model = modelCls(**model_args)
+        user_model.train(train_mat, test_mat)
+        user_prediction = user_model.predict(train_mat, test_mat)
+        print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
 
-    item_model = modelCls(**model_args)
-    item_model.train(train_mat.T)
-    item_prediction = item_model.predict(train_mat.T, test_mat.T)
-    print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_mat.T)))
+    if item_based:
+        train_matT, test_matT = train_mat.T.tocsr(), test_mat.T.tocsr()
+        item_model = modelCls(**model_args)
+        item_model.train(train_matT, test_matT)
+        item_prediction = item_model.predict(train_matT, test_matT)
+        print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_matT)))
 
 
 if __name__ == '__main__':
@@ -102,4 +109,4 @@ if __name__ == '__main__':
 
     # Note: simple_sim is just TopK with k=\infty
     doIt(Simple_sim, sim_fn=similarity.cosine_sim)
-    # doIt(Topk, k=50, sim_fn=similarity.cosine_sim)
+    doIt(Topk, k=50, sim_fn=similarity.cosine_sim)

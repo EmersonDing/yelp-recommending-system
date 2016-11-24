@@ -26,10 +26,48 @@ class Simple_sim(object):
 
     def predict(self, ui_mat, test_mat):
         rows, cols = test_mat.nonzero()
-        U = ui_mat[:, cols]
+        R = ui_mat[:, cols].T
         S = self.sim_mat[rows, :]
-        N = np.sum(S, axis=1)
-        return np.asarray(U.multiply(S.T).sum(axis=0)).flatten() / N
+        N = np.sum(S, axis=1).flatten()
+        return np.asarray(R.multiply(S).sum(axis=1)).flatten() / N
+
+
+class TopK(object):
+    def __init__(self, k, sim_fn):
+        self.k = k
+        self.sim_fn = sim_fn
+
+    def train(self, ui_mat, test_mat):
+        if self.k > ui_mat.shape[0]-1:
+            print('==Warning! k is smaller than maximum neighbor number ({0}). Set k to {0}'.format(ui_mat.shape[0]-1))
+            self.k = ui_mat.shape[0]-1
+
+        self.sim_mat = self.sim_fn(ui_mat)
+        sorted_sim_mat = np.argsort(self.sim_mat)[:,::-1]
+        # k nearest neighbor of user u
+        u_neighbors = sorted_sim_mat[:, 1:self.k+1]
+        u_neighbors.sort()
+
+        rows, cols = test_mat.nonzero()
+
+        Sk_rows = []
+        Sk_cols = []
+        Sk_data = []
+        for ind, (u, i) in enumerate(zip(rows, cols)):
+            Sk = list(u_neighbors[u])
+            Sk_rows.extend([ind]*len(Sk))
+            Sk_cols.extend(Sk)
+            Sk_data.extend([1]*len(Sk))
+
+        self.SK = sparse.csr_matrix((Sk_data, (Sk_rows, Sk_cols)), shape=(len(rows), ui_mat.shape[0]))
+
+    def predict(self, ui_mat, test_mat):
+        rows, cols = test_mat.nonzero()
+        R = ui_mat[:, cols].T
+        S = self.sim_mat[rows, :]
+        MS = self.SK.multiply(sparse.csr_matrix(S))
+        N = np.sum(MS, axis=1)
+        return np.asarray(R.multiply(MS).sum(axis=1)).flatten() / N.flatten()
 
 
 class Model(object):
