@@ -169,6 +169,7 @@ if __name__ == '__main__':
 
             pickle.dump({'train':train_mat, 'test': test_mat}, f)
     else:
+        print('testing {}'.format(args.inpf))
         with open(args.inpf, 'rb') as f:
             data = pickle.load(f)
             train_mat, test_mat = data['train'], data['test']
