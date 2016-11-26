@@ -8,25 +8,25 @@ class Simple_sim(object):
     def __init__(self, sim_fn):
         self.sim_fn = sim_fn
 
-    def train(self, ui_mat, test_mat):
+    def train(self, train_mat, test_mat):
         # sim_mat
         # shape: (# item, # item) for item based
         # shape: (# user, # user) for user based
         # Note sim_mat is symmetric
-        self.sim_mat = self.sim_fn(ui_mat)
+        self.sim_mat = self.sim_fn(train_mat)
 
-    def predict_slow(self, ui_mat, test_mat):
+    def predict_slow(self, train_mat, test_mat):
         pred = test_mat.copy()
         for u, i in zip(*pred.nonzero()):
             sub_sim_mat = self.sim_mat[u, :]
-            pred[u, i] = ui_mat[:, i].toarray().flatten().dot(sub_sim_mat)
+            pred[u, i] = train_mat[:, i].toarray().flatten().dot(sub_sim_mat)
             pred[u, i] /= np.sum(np.abs(sub_sim_mat))
 
         return pred[test_mat.nonzero()]
 
-    def predict(self, ui_mat, test_mat):
+    def predict(self, train_mat, test_mat):
         rows, cols = test_mat.nonzero()
-        R = ui_mat[:, cols].T
+        R = train_mat[:, cols].T
         S = self.sim_mat[rows, :]
         N = np.sum(S, axis=1).flatten()
         return np.asarray(R.multiply(S).sum(axis=1)).flatten() / N
