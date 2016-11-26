@@ -161,8 +161,14 @@ def diffIteration():
     user_based_Neighbor_Testing = []
     item_based_Neighbor_Training = []
     item_based_Neighbor_Testing = []
+    user_based_Neighbor_Training_no_x = []
+    user_based_Neighbor_Testing_no_x = []
+    item_based_Neighbor_Training_no_x = []
+    item_based_Neighbor_Testing_no_x = []
     user_based_Factor_Training = []
     user_based_Factor_Testing = []
+    user_based_Factor_Training_no_c = []
+    user_based_Factor_Testing_no_c = []
     user_based_Integrated_Training = []
     user_based_Integrated_Testing = []
     item_based_Integrated_Training = []
@@ -173,59 +179,77 @@ def diffIteration():
         user_based_Bias_Testing.append(result[1])
         item_based_Bias_Training.append(result[2])
         item_based_Bias_Testing.append(result[3])
-        result = doIt(Neighbor, sim_fn=similarity.cosine_sim, k=100, iteration=iteration)
+        result = doIt(Neighbor, with_c=True, sim_fn=similarity.cosine_sim, k=50, iteration=iteration)
         user_based_Neighbor_Training.append(result[0])
         user_based_Neighbor_Testing.append(result[1])
         item_based_Neighbor_Training.append(result[2])
         item_based_Neighbor_Testing.append(result[3])
-        result = doIt(Factor, item_based=False, emb_dim=100, iteration=iteration)
+        result = doIt(Neighbor, with_c=False, sim_fn=similarity.cosine_sim, k=50, iteration=iteration)
+        user_based_Neighbor_Training_no_x.append(result[0])
+        user_based_Neighbor_Testing_no_x.append(result[1])
+        item_based_Neighbor_Training_no_x.append(result[2])
+        item_based_Neighbor_Testing_no_x.append(result[3])
+        result = doIt(Factor, with_y=True, emb_dim=10, iteration=iteration)
         user_based_Factor_Training.append(result[0])
         user_based_Factor_Testing.append(result[1])
-        result = doIt(Integrated, with_c=True, sim_fn=similarity.cosine_sim, k=100, with_y=True, emb_dim=100, iteration=5)
+        result = doIt(Factor, with_y=False, emb_dim=10, iteration=iteration)
+        user_based_Factor_Training_no_c.append(result[0])
+        user_based_Factor_Testing_no_c.append(result[1])
+        result = doIt(Integrated, with_c=True, sim_fn=similarity.cosine_sim, k=50, with_y=True, emb_dim=10, iteration=iteration)
         user_based_Integrated_Training.append(result[0])
         user_based_Integrated_Testing.append(result[1])
         item_based_Integrated_Training.append(result[2])
         item_based_Integrated_Testing.append(result[3])
 
     # print result
-    print("Iteration number: " , result)
+    print("Iteration number: " , iterations)
     print("user_based_Bias_Training: " , user_based_Bias_Training)
     print("user_based_Bias_Testing: " , user_based_Bias_Testing)
     print("item_based_Bias_Training: " , item_based_Bias_Training)
     print("item_based_Bias_Testing: " , item_based_Bias_Testing)
-    print("user_based_Neighbor_Training: " , user_based_Neighbor_Training)
-    print("user_based_Neighbor_Testing: " , user_based_Neighbor_Testing)
-    print("item_based_Neighbor_Training: " , item_based_Neighbor_Training)
-    print("item_based_Neighbor_Testing: " , item_based_Neighbor_Testing)
-    print("user_based_Factor_Training: " , user_based_Factor_Training)
-    print("user_based_Factor_Testing: " , user_based_Factor_Testing)
+    print("user_based_Neighbor_Training_y: " , user_based_Neighbor_Training)
+    print("user_based_Neighbor_Testing_y: " , user_based_Neighbor_Testing)
+    print("item_based_Neighbor_Training_y: " , item_based_Neighbor_Training)
+    print("item_based_Neighbor_Testing_y: " , item_based_Neighbor_Testing)
+    print("user_based_Neighbor_Training_no_y: " , user_based_Neighbor_Training_no_x)
+    print("user_based_Neighbor_Testing_no_y: " , user_based_Neighbor_Testing_no_x)
+    print("item_based_Neighbor_Training_no_y: " , item_based_Neighbor_Training_no_x)
+    print("item_based_Neighbor_Testing_no_y: " , item_based_Neighbor_Testing_no_x)
+    print("user_based_Factor_Training_c: " , user_based_Factor_Training)
+    print("user_based_Factor_Testing_c: " , user_based_Factor_Testing)
+    print("user_based_Factor_Training_no_c: " , user_based_Factor_Training_no_c)
+    print("user_based_Factor_Testing_no_c: " , user_based_Factor_Testing_no_c)
     print("user_based_Integrated_Training: " , user_based_Integrated_Training)
     print("user_based_Integrated_Testing: " , user_based_Integrated_Testing)
     print("item_based_Integrated_Training: " , item_based_Integrated_Training)
     print("item_based_Integrated_Testing: " , item_based_Integrated_Testing)
 
-    # printPlotDiffIteration(iterations, user_based_Bias_Training, item_based_Bias_Training, user_based_Neighbor_Training,
-    #                    item_based_Neighbor_Training, user_based_Factor_Training)
-    # printPlotTrainTest(iterations, user_based_Bias_Training, user_based_Bias_Testing, user_based_Neighbor_Training, user_based_Neighbor_Testing)
-    printPlotIntegrated(iterations, user_based_Neighbor_Training, user_based_Bias_Training, user_based_Integrated_Training)
-
 def diffKValue():
     result = []
     user_based_Neighbor = []
-    item_based_Neighbor = []
+    user_based_Factor = []
     kSet = [1, 5, 10, 25, 50, 100]
     for k in kSet:
-        result = doIt(Neighbor, sim_fn=similarity.cosine_sim, k=k, iteration=10)
-        user_based_Neighbor.append(result[0])
-        item_based_Neighbor.append(result[2])
-    printPlotDiffK(kSet, user_based_Neighbor, item_based_Neighbor)
+        result = doIt(Neighbor, with_c=True, sim_fn=similarity.cosine_sim, k=k, iteration=15)
+        user_based_Neighbor.append(result[1])
+    printPlotDiffK(kSet, user_based_Neighbor)
 
-def printPlotDiffIteration(iterations, x1, y1, x2, y2, x3):
-    plt.plot(iterations, x1, color = 'red', label = 'user_based_bias')
-    plt.plot(iterations, y1, color = 'orange', label = 'item_based_bias')
-    plt.plot(iterations, x2, color = 'pink', label = 'user_based_neighbor')
-    plt.plot(iterations, y2, color = 'blue', label = 'item_based_neighbor')
-    plt.plot(iterations, x3, color = 'green', label = 'factor')
+def diffEmbeddedDimension():
+    Factor_y = []
+    Factor_no_y = []
+    kSet = [1, 5, 10, 25, 50, 100]
+    for k in kSet:
+        result = doIt(Factor, with_y=True, emb_dim=k, iteration=15)
+        Factor_y.append(result[1])
+        result = doIt(Factor, with_y=False, emb_dim=k, iteration=15)
+        Factor_no_y.append(result[1])
+    printPlotDiffEmbeddedDimension(kSet, Factor_y, Factor_no_y)
+
+def printPlotDiffIteration(iterations, x1, x2, x3, x4):
+    plt.plot(iterations, x1, color = 'red', label = 'bias')
+    plt.plot(iterations, x2, color = 'blue', label = 'neighbor_with_y')
+    plt.plot(iterations, x3, color = 'green', label = 'factor_without_c')
+    plt.plot(iterations, x4, color = 'orange', label = 'integrated')
     plt.xlabel('Iterations')
     plt.ylabel('Mean Square Error')
     plt.legend(loc='upper left')
@@ -250,10 +274,25 @@ def printPlotIntegrated(iterations, x, y, z):
     plt.legend(loc='upper left')
     plt.show()
 
-def printPlotDiffK(k, x, y):
+def printPlotDiffK(k, x):
     line1 = plt.plot(k, x, color = 'red', label = 'user_based_neighbor')
-    line2 = plt.plot(k, y, color = 'blue', label = 'item_based_neighbor')
     plt.xlabel('k')
+    plt.ylabel('Mean Square Error')
+    plt.legend(loc='upper left')
+    plt.show()
+
+def printPlotDiffEmbeddedDimension(k, x, y):
+    line1 = plt.plot(k, x, color = 'red', label = 'factor_with_y')
+    line1 = plt.plot(k, y, color = 'blue', label = 'factor_without_y')
+    plt.xlabel('embedded dimension')
+    plt.ylabel('Mean Square Error')
+    plt.legend(loc='upper left')
+    plt.show()
+
+def printPlotTwoDiff(k, x, y, label_x, label_y, coo_x):
+    line1 = plt.plot(k, x, color = 'red', label = label_x)
+    line1 = plt.plot(k, y, color = 'blue', label = label_y)
+    plt.xlabel(coo_x)
     plt.ylabel('Mean Square Error')
     plt.legend(loc='upper left')
     plt.show()
@@ -283,6 +322,11 @@ if __name__ == '__main__':
         print('Sparsity: {}'.format(sparsity))
 
     # printPlot([1,2,3], [4,6,9], [2,3,4], [7,8,9], [1,2,3], [4,3,2])
-    diffIteration()
+    # diffEmbeddedDimension()
+    # diffIteration()
     # diffKValue()
-
+    # printPlotDiffIteration([5, 10, 15, 25, 50, 100], [0.90252341558002069, 0.87804352888419201, 0.87449905606789191, 0.87936163192542693, 0.89193660140760656, 0.89807255115300644], [0.89228608969168777, 0.86928905669794609, 0.86578550441649527, 0.86766916918794323, 0.8703647616501724, 0.8692765667665191], [0.90280740405052118, 0.8780799826409682, 0.87453107083178283, 0.87936130178641336, 0.89167800882026504, 0.89429544544024342])
+    # printPlotTwoDiff([5, 10, 15, 25, 50, 100], [0.89155133903802553, 0.86848193585590938, 0.8643909388754214, 0.86452308214170925, 0.86353846395035161, 0.86016006496024955], [0.90099938533908175, 0.87593745004632717, 0.87080879062314009, 0.87230463042325168, 0.879699540241628, 0.88662072217269539], 'neighbor_with_y', 'neighbor_without_y', 'iteration time')
+    # printPlotTwoDiff([5, 10, 15, 25, 50, 100],[0.90647392345648958, 0.87860970659724458, 0.87538288964632904, 0.87871370981797203, 0.88814789789925264, 0.91439048378141463],[0.90173184234791948, 0.87767627875669552, 0.87445678431240015, 0.8790071074845115,0.89273694359540434, 0.89143607988068874], 'factor_with_c', 'factor_without_c','iteration time')
+    # printPlotDiffIteration([5, 10, 15, 25, 50, 100], [0.90252341558002069, 0.87804352888419201, 0.87449905606789191, 0.87936163192542693, 0.89193660140760656, 0.89807255115300644], [0.89155133903802553, 0.86848193585590938, 0.8643909388754214, 0.86452308214170925, 0.86353846395035161, 0.86016006496024955], [0.90173184234791948, 0.87767627875669552, 0.87445678431240015, 0.8790071074845115, 0.89273694359540434, 0.89143607988068874], [0.89622306324786227, 0.86878380117076481, 0.86240973069252025, 0.86290842278496283, 0.86281330057751959, 0.86084494420362268])
+    # printPlotTwoDiff([5, 10, 15, 25, 50, 100], [0.61627274727278347, 0.54235431933133549, 0.49594567477639873, 0.42821490040172155, 0.31058038227338192, 0.15638576000142435], [0.89622306324786227, 0.86878380117076481, 0.86240973069252025, 0.86290842278496283, 0.86281330057751959, 0.86084494420362268], 'integrated_training', 'integrated_testing', 'iteration time')
