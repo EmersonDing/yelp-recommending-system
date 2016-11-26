@@ -135,17 +135,21 @@ def doIt(modelCls, user_based=True, item_based=True, **model_args):
     print('Model: {}'.format(modelCls.__name__))
     print('Args: {}'.format(model_args))
     if user_based:
-        user_model = modelCls(**model_args)
-        user_model.train(train_mat, test_mat)
-        user_prediction = user_model.predict(train_mat, test_mat)
-        print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
+        model = modelCls(**model_args)
+        model.train(train_mat, test_mat)
+        train_prediction = model.predict(train_mat, train_mat)
+        print('User-based CF training MSE: {}'.format(get_mse(train_prediction, train_mat)))
+        test_prediction = model.predict(train_mat, test_mat)
+        print('User-based CF testing MSE: {}'.format(get_mse(test_prediction, test_mat)))
 
     if item_based:
         train_matT, test_matT = train_mat.T.tocsr(), test_mat.T.tocsr()
-        item_model = modelCls(**model_args)
-        item_model.train(train_matT, test_matT)
-        item_prediction = item_model.predict(train_matT, test_matT)
-        print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_matT)))
+        model = modelCls(**model_args)
+        model.train(train_matT, test_matT)
+        train_prediction = model.predict(train_matT, train_matT)
+        print('Item-based CF training MSE: {}'.format(get_mse(train_prediction, train_mat)))
+        test_prediction = model.predict(train_matT, test_matT)
+        print('Item-based CF testing MSE: {}'.format(get_mse(test_prediction, test_matT)))
 
 if __name__ == '__main__':
 
@@ -171,5 +175,5 @@ if __name__ == '__main__':
     doIt(Simple_sim, sim_fn=similarity.cosine_sim)
     doIt(TopK, k=50, sim_fn=similarity.cosine_sim)
     doIt(Bias, iteration=10)
-    doIt(Neighbor, sim_fn=similarity.cosine_sim, k=100, iteration=2)
-    doIt(Factor, emb_dim=100, iteration=10)
+    doIt(Neighbor, with_c=False, item_based=False, sim_fn=similarity.cosine_sim, k=100, iteration=5)
+    doIt(Factor, with_y=False, emb_dim=100, iteration=3)
