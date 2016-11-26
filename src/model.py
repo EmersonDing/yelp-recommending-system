@@ -81,6 +81,7 @@ class Model(object):
         for _ in range(self.iteration):
             pred_data = self.predict(ui_mat, ui_mat)
             gradient = self.gradient(ui_mat, pred_data)
+            assert len(self.parameters)==len(gradient)
             for param, g in zip(self.parameters, gradient):
                 if sparse.issparse(param):
                     param.data += self.gamma * g.data
@@ -195,10 +196,6 @@ class Neighbor(Bias):
         '''
         super(Neighbor, self).init_param(ui_mat)
         num_user = ui_mat.shape[0]
-        # if self.k == ui_mat.shape[0]:
-        #     k = self.k-1
-        # else:
-        #     k = self.k
         rows = []
         cols = []
         data = [1e-9]*self.k*num_user
@@ -207,7 +204,6 @@ class Neighbor(Bias):
             cols.extend(self.u_neighbors[u])
 
         self.w = sparse.csr_matrix((data, (rows, cols)), shape=(num_user, num_user))
-        # self.w = self.w.toarray()
         self.parameters += [self.w]
 
     def init_non_param(self, ui_mat, test_mat):
@@ -223,8 +219,10 @@ class Neighbor(Bias):
         # k nearest neighbor of user u
         self.u_neighbors = sorted_sim_mat[:, 1:self.k+1]
         self.u_neighbors.sort()
+
+        uimat_csc = ui_mat.tocsc()
         # user who rates item i
-        rated_user = [ui_mat.tocsc()[:,i].indices for i in range(ui_mat.shape[1])]
+        rated_user = [uimat_csc[:,i].indices for i in range(ui_mat.shape[1])]
 
         def get_mat_info(mat):
             rows, cols = mat.nonzero()
