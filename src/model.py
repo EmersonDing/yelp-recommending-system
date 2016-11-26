@@ -178,7 +178,7 @@ class Bias(Model):
 
 
 class Neighbor(Bias):
-    def __init__(self, sim_fn, k=500, with_c=False, gamma=0.005, lambda4=0.002, iteration=15):
+    def __init__(self, sim_fn=None, k=500, with_c=False, gamma=0.005, lambda4=0.002, iteration=15):
         ''' Neighborhood model, refer to report. Note this implementation use sparse matrix. For a dense counterpart, please refer to obsolete.Neighbor.
         @param k: how many neighbor to use.
         @param with_c: whether to add a bias term c (see report)
@@ -418,6 +418,113 @@ class Factor(Bias):
         if self.with_y:
             mat_info = self.mat_info[id(test_mat)]
             N, RU = mat_info['N'], mat_info['RU']
+            Y = np.zeros_like(P)
+            for row in range(Y.shape[0]):
+                Y[row] = self.Y[RU[row]].sum(axis=0)
+            pred += np.sum(Q* N * Y, axis=1)
+        return pred
+
+
+class Integrated(Neighbor):
+    def __init__(self, sim_fn, k=500, with_c=False, emb_dim=100, with_y=False, gamma=0.005, lambda4=0.002, iteration=15):
+        ''' Factor model, refer to report.
+        @param gamma: float. learning rate.
+        @param lambda4: float. regularition weight.
+        @param iteration: sgd iteration.
+        '''
+        super(Integrated, self).__init__(sim_fn=sim_fn, k=k, with_c=with_c)
+        self.emb_dim = emb_dim
+        self.with_y = with_y
+        self.gamma = gamma
+        self.lambda4 = lambda4
+        self.iteration = iteration
+
+    def init_param(self, ui_mat):
+        ''' @see Model.init_param.
+        '''
+        super(Integrated, self).init_param(ui_mat)
+        num_user, num_item = ui_mat.shape
+        self.P = np.random.random((num_user, self.emb_dim))/self.emb_dim
+        self.Q = np.random.random((num_item, self.emb_dim))/self.emb_dim
+        self.parameters += [self.P, self.Q]
+
+        if self.with_y:
+            self.Y = np.random.random((num_item, self.emb_dim))/self.emb_dim
+            self.parameters += [self.Y]
+
+    def init_non_param(self, ui_mat, test_mat):
+        ''' @see Model.init_non_param.
+        '''
+        super(Integrated, self).init_non_param(ui_mat, test_mat)
+
+        if self.with_y:
+            rated_item = np.zeros(ui_mat.shape, dtype=bool)
+            for u in range(ui_mat.shape[0]):
+                rated_item[u, ui_mat[u].indices] = True
+
+            def get_mat_info(mat):
+                rows, cols = mat.nonzero()
+                RU = rated_item[rows]
+                N = 1./np.sqrt(np.sum(RU, axis=1))[:, None]
+                return {'N': N, 'RU': RU}
+
+            self.mat_info2 = {id(ui_mat): get_mat_info(ui_mat),
+                              id(test_mat): get_mat_info(test_mat)}
+
+    def gradient(self, ui_mat, pred_data):
+        ''' @see Model.gradient.
+        '''
+
+        rows, cols = ui_mat.nonzero()
+        eui = (np.asarray(ui_mat[rows, cols]).flatten() - pred_data)[:, None]
+
+        P = self.P[rows, :]
+        Q = self.Q[cols, :]
+
+        detaP = (eui * Q - self.lambda4 * P)
+        detaQ = (eui * P - self.lambda4 * Q)
+
+        gradient = super(Integrated, self).gradient(ui_mat, pred_data)
+
+        gp = np.zeros_like(self.P)
+        gq = np.zeros_like(self.Q)
+
+        for ind, (u, i) in enumerate(zip(rows, cols)):
+            gp[u] += detaP[ind]
+            gq[i] += detaQ[ind]
+
+        gradient = super(Integrated, self).gradient(ui_mat, pred_data)
+        gradient += [gp, gq]
+
+        if self.with_y:
+            mat_info2 = self.mat_info2[id(ui_mat)]
+            N, RU = mat_info2['N'], mat_info2['RU']
+            Y = np.zeros_like(P)
+            for row in range(Y.shape[0]):
+                Y[row] = self.Y[RU[row]].sum(axis=0)
+            detaQ += eui * N * Y
+            detaY = (eui * N * Q - self.lambda4 * Y)
+            gy = np.zeros_like(self.Y)
+            for ind, (u, i) in enumerate(zip(rows, cols)):
+                gy[i] += detaY[ind]
+
+            gradient += [gy]
+
+        return gradient
+
+    def predict(self, ui_mat, test_mat):
+        ''' @see Model.predict.
+        '''
+        pred = super(Integrated, self).predict(ui_mat, test_mat)
+        rows, cols = test_mat.nonzero()
+
+        P = self.P[rows, :]
+        Q = self.Q[cols, :]
+        pred += np.sum(Q*P, axis=1)
+
+        if self.with_y:
+            mat_info2 = self.mat_info2[id(test_mat)]
+            N, RU = mat_info2['N'], mat_info2['RU']
             Y = np.zeros_like(P)
             for row in range(Y.shape[0]):
                 Y[row] = self.Y[RU[row]].sum(axis=0)
