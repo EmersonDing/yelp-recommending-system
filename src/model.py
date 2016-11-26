@@ -178,15 +178,17 @@ class Bias(Model):
 
 
 class Neighbor(Bias):
-    def __init__(self, sim_fn, k=500, gamma=0.005, lambda4=0.002, iteration=15):
+    def __init__(self, sim_fn, k=500, with_c=False, gamma=0.005, lambda4=0.002, iteration=15):
         ''' Neighborhood model, refer to report. Note this implementation use sparse matrix. For a dense counterpart, please refer to obsolete.Neighbor.
         @param k: how many neighbor to use.
+        @param with_c: whether to add a bias term c (see report)
         @param gamma: float. learning rate.
         @param lambda4: float. regularition weight.
         @param iteration: sgd iteration.
         '''
         self.sim_fn = sim_fn
         self.k = k
+        self.with_c = with_c
         self.gamma = gamma
         self.lambda4 = lambda4
         self.iteration = iteration
@@ -205,6 +207,9 @@ class Neighbor(Bias):
 
         self.w = sparse.csr_matrix((data, (rows, cols)), shape=(num_user, num_user))
         self.parameters += [self.w]
+        if self.with_c:
+            self.c = sparse.csr_matrix((data, (rows, cols)), shape=(num_user, num_user))
+            self.parameters += [self.c]
 
     def init_non_param(self, ui_mat, test_mat):
         ''' @see Model.init_non_param.
@@ -277,6 +282,19 @@ class Neighbor(Bias):
         gradient = super(Neighbor, self).gradient(ui_mat, pred_data)
         gradient += [gw]
 
+        if self.with_c:
+            detac = (spmul(Rkui, (N*eui)[:, None], copy=True)) - spmul(self.lambda4, Rkui.multiply(w))
+            gc = self.c.copy()
+            gc_data = []
+
+            for u in range(ui_mat.shape[0]):
+                tmp = detac[rows==u].sum(axis=0).A1
+                tmp = tmp[self.u_neighbors[u]].tolist()
+                gc_data.extend(tmp)
+
+            gc.data = np.asarray(gc_data)
+            gradient += [gc]
+
         return gradient
 
     def predict(self, ui_mat, test_mat):
@@ -293,7 +311,11 @@ class Neighbor(Bias):
         Rmbuj = spsub(R, self.mu)
         Rmbuj = spsub(Rmbuj, self.bu[None, :])
         Rmbuj = spsub(Rmbuj, self.bi[cols][:, None])
+
         pred += N * Rkui.multiply(w).multiply(Rmbuj).sum(axis=1).A1
+        if self.with_c:
+            c = self.c[rows, :]
+            pred += N * Rkui.multiply(c).sum(axis=1).A1
         return pred
 
 
