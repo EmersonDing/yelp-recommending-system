@@ -169,10 +169,12 @@ if __name__ == '__main__':
 
             pickle.dump({'train':train_mat, 'test': test_mat}, f)
     else:
-        print('testing {}'.format(args.inpf))
         with open(args.inpf, 'rb') as f:
             data = pickle.load(f)
             train_mat, test_mat = data['train'], data['test']
+        sparsity = float(train_mat.getnnz()+test_mat.getnnz())/(train_mat.shape[0]*train_mat.shape[1])
+        print('testing {}'.format(args.inpf))
+        print('Sparsity: {}'.format(sparsity))
 
     # doIt(Simple_sim, sim_fn=similarity.cosine_sim)
     doIt(TopK, k=50, sim_fn=similarity.cosine_sim)
