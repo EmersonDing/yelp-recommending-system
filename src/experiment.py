@@ -27,8 +27,8 @@ def parse_arg(argv):
     parsing cli arguments
     '''
     parser = argparse.ArgumentParser(description='Prepare rating matrix')
-    parser.add_argument('-i', '--inpf', default='../processed_data/Stars_Latest.pkl', help='pickle file containing train/test rating matrix')
-    parser.add_argument('-ri', '--raw_inpf', default='../raw_data/Stars_Latest.csv', help='csv file for rating matrix, used to genrate inpf')
+    parser.add_argument('-i', '--inpf', default='../processed_data/Stars_user_oriented.pkl', help='pickle file containing train/test rating matrix')
+    parser.add_argument('-ri', '--raw_inpf', default='../raw_data/Stars_user_oriented.csv', help='csv file for rating matrix, used to genrate inpf')
     parser.add_argument('-s', '--split', type=float, default=0.1, help='ratio of testing split data, e.g. 0.1 will split 1/10 (usr, item) ratings as testing pairs.')
     parser.add_argument('-r', '--random_seed', type=int, default=0, help='random seed to split tainging and testing data')
     return parser.parse_args(argv[1:])
@@ -323,7 +323,7 @@ if __name__ == '__main__':
 
     # printPlot([1,2,3], [4,6,9], [2,3,4], [7,8,9], [1,2,3], [4,3,2])
     # diffEmbeddedDimension()
-    # diffIteration()
+    diffIteration()
     # diffKValue()
     # printPlotDiffIteration([5, 10, 15, 25, 50, 100], [0.90252341558002069, 0.87804352888419201, 0.87449905606789191, 0.87936163192542693, 0.89193660140760656, 0.89807255115300644], [0.89228608969168777, 0.86928905669794609, 0.86578550441649527, 0.86766916918794323, 0.8703647616501724, 0.8692765667665191], [0.90280740405052118, 0.8780799826409682, 0.87453107083178283, 0.87936130178641336, 0.89167800882026504, 0.89429544544024342])
     # printPlotTwoDiff([5, 10, 15, 25, 50, 100], [0.89155133903802553, 0.86848193585590938, 0.8643909388754214, 0.86452308214170925, 0.86353846395035161, 0.86016006496024955], [0.90099938533908175, 0.87593745004632717, 0.87080879062314009, 0.87230463042325168, 0.879699540241628, 0.88662072217269539], 'neighbor_with_y', 'neighbor_without_y', 'iteration time')
