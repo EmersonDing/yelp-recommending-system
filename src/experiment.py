@@ -18,6 +18,7 @@ from model import Simple_sim
 from model import Bias
 from model import Neighbor
 from model import Factor
+from model import Integrated
 from scipy import sparse
 
 
@@ -26,8 +27,8 @@ def parse_arg(argv):
     parsing cli arguments
     '''
     parser = argparse.ArgumentParser(description='Prepare rating matrix')
-    parser.add_argument('-i', '--inpf', default='../processed_data/Stars_Top_Users.pkl', help='pickle file containing train/test rating matrix')
-    parser.add_argument('-ri', '--raw_inpf', default='../raw_data/Stars_Top_Users.csv', help='csv file for rating matrix, used to genrate inpf')
+    parser.add_argument('-i', '--inpf', default='../processed_data/Stars_Latest.pkl', help='pickle file containing train/test rating matrix')
+    parser.add_argument('-ri', '--raw_inpf', default='../raw_data/Stars_Latest.csv', help='csv file for rating matrix, used to genrate inpf')
     parser.add_argument('-s', '--split', type=float, default=0.1, help='ratio of testing split data, e.g. 0.1 will split 1/10 (usr, item) ratings as testing pairs.')
     parser.add_argument('-r', '--random_seed', type=int, default=0, help='random seed to split tainging and testing data')
     return parser.parse_args(argv[1:])
@@ -131,45 +132,82 @@ def doIt(modelCls, user_based=True, item_based=True, **model_args):
     @param model_args: args for initializing modelCls.
     '''
     result = []
-    print
-    print('='*20)
-    print('Model: {}'.format(modelCls.__name__))
-    print('Args: {}'.format(model_args))
     if user_based:
-        user_model = modelCls(**model_args)
-        user_model.train(train_mat, test_mat)
-        user_prediction = user_model.predict(train_mat, test_mat)
-        # print('User-based CF MSE: {}'.format(get_mse(user_prediction, test_mat)))
-        result.append(get_mse(user_prediction, test_mat))
+        model = modelCls(**model_args)
+        model.train(train_mat, test_mat)
+        train_prediction = model.predict(train_mat, train_mat)
+        test_prediction = model.predict(train_mat, test_mat)
+        result.append(get_mse(train_prediction, train_mat))
+        result.append(get_mse(test_prediction, test_mat))
 
     if item_based:
         train_matT, test_matT = train_mat.T.tocsr(), test_mat.T.tocsr()
-        item_model = modelCls(**model_args)
-        item_model.train(train_matT, test_matT)
-        item_prediction = item_model.predict(train_matT, test_matT)
-        # print('Item-based CF MSE: {}'.format(get_mse(item_prediction, test_matT)))
-        result.append(get_mse(item_prediction, test_matT))
+        model = modelCls(**model_args)
+        model.train(train_matT, test_matT)
+        train_prediction = model.predict(train_matT, train_matT)
+        test_prediction = model.predict(train_matT, test_matT)
+        result.append(get_mse(train_prediction, train_mat))
+        result.append(get_mse(test_prediction, test_mat))
 
     return result
 
 def diffIteration():
     iterations = [5, 10, 15, 25, 50, 100]
-    user_based_Bias = []
-    item_based_Bias = []
-    user_based_Neighbor = []
-    item_based_Neighbor = []
-    user_based_Factor = []
+    user_based_Bias_Training = []
+    user_based_Bias_Testing = []
+    item_based_Bias_Training = []
+    item_based_Bias_Testing = []
+    user_based_Neighbor_Training = []
+    user_based_Neighbor_Testing = []
+    item_based_Neighbor_Training = []
+    item_based_Neighbor_Testing = []
+    user_based_Factor_Training = []
+    user_based_Factor_Testing = []
+    user_based_Integrated_Training = []
+    user_based_Integrated_Testing = []
+    item_based_Integrated_Training = []
+    item_based_Integrated_Testing = []
     for iteration in iterations:
         result = doIt(Bias, iteration=iteration)
-        user_based_Bias.append(result[0])
-        item_based_Bias.append(result[1])
+        user_based_Bias_Training.append(result[0])
+        user_based_Bias_Testing.append(result[1])
+        item_based_Bias_Training.append(result[2])
+        item_based_Bias_Testing.append(result[3])
         result = doIt(Neighbor, sim_fn=similarity.cosine_sim, k=100, iteration=iteration)
-        user_based_Neighbor.append(result[0])
-        item_based_Neighbor.append(result[1])
+        user_based_Neighbor_Training.append(result[0])
+        user_based_Neighbor_Testing.append(result[1])
+        item_based_Neighbor_Training.append(result[2])
+        item_based_Neighbor_Testing.append(result[3])
         result = doIt(Factor, item_based=False, emb_dim=100, iteration=iteration)
-        user_based_Factor.append(result[0])
-        printPlotDiffIteration(iterations, user_based_Bias, item_based_Bias, user_based_Neighbor,
-              item_based_Neighbor, user_based_Factor)
+        user_based_Factor_Training.append(result[0])
+        user_based_Factor_Testing.append(result[1])
+        result = doIt(Integrated, with_c=True, sim_fn=similarity.cosine_sim, k=100, with_y=True, emb_dim=100, iteration=5)
+        user_based_Integrated_Training.append(result[0])
+        user_based_Integrated_Testing.append(result[1])
+        item_based_Integrated_Training.append(result[2])
+        item_based_Integrated_Testing.append(result[3])
+
+    # print result
+    print("Iteration number: " , result)
+    print("user_based_Bias_Training: " , user_based_Bias_Training)
+    print("user_based_Bias_Testing: " , user_based_Bias_Testing)
+    print("item_based_Bias_Training: " , item_based_Bias_Training)
+    print("item_based_Bias_Testing: " , item_based_Bias_Testing)
+    print("user_based_Neighbor_Training: " , user_based_Neighbor_Training)
+    print("user_based_Neighbor_Testing: " , user_based_Neighbor_Testing)
+    print("item_based_Neighbor_Training: " , item_based_Neighbor_Training)
+    print("item_based_Neighbor_Testing: " , item_based_Neighbor_Testing)
+    print("user_based_Factor_Training: " , user_based_Factor_Training)
+    print("user_based_Factor_Testing: " , user_based_Factor_Testing)
+    print("user_based_Integrated_Training: " , user_based_Integrated_Training)
+    print("user_based_Integrated_Testing: " , user_based_Integrated_Testing)
+    print("item_based_Integrated_Training: " , item_based_Integrated_Training)
+    print("item_based_Integrated_Testing: " , item_based_Integrated_Testing)
+
+    # printPlotDiffIteration(iterations, user_based_Bias_Training, item_based_Bias_Training, user_based_Neighbor_Training,
+    #                    item_based_Neighbor_Training, user_based_Factor_Training)
+    # printPlotTrainTest(iterations, user_based_Bias_Training, user_based_Bias_Testing, user_based_Neighbor_Training, user_based_Neighbor_Testing)
+    printPlotIntegrated(iterations, user_based_Neighbor_Training, user_based_Bias_Training, user_based_Integrated_Training)
 
 def diffKValue():
     result = []
@@ -179,15 +217,34 @@ def diffKValue():
     for k in kSet:
         result = doIt(Neighbor, sim_fn=similarity.cosine_sim, k=k, iteration=10)
         user_based_Neighbor.append(result[0])
-        item_based_Neighbor.append(result[1])
+        item_based_Neighbor.append(result[2])
     printPlotDiffK(kSet, user_based_Neighbor, item_based_Neighbor)
 
 def printPlotDiffIteration(iterations, x1, y1, x2, y2, x3):
-    line1 = plt.plot(iterations, x1, color = 'red', label = 'user_based_bias')
-    line2 = plt.plot(iterations, y1, color = 'orange', label = 'item_based_bias')
-    line3 = plt.plot(iterations, x2, color = 'pink', label = 'user_based_neighbor')
-    line4 = plt.plot(iterations, y2, color = 'blue', label = 'item_based_neighbor')
-    line5 = plt.plot(iterations, x3, color = 'green', label = 'factor')
+    plt.plot(iterations, x1, color = 'red', label = 'user_based_bias')
+    plt.plot(iterations, y1, color = 'orange', label = 'item_based_bias')
+    plt.plot(iterations, x2, color = 'pink', label = 'user_based_neighbor')
+    plt.plot(iterations, y2, color = 'blue', label = 'item_based_neighbor')
+    plt.plot(iterations, x3, color = 'green', label = 'factor')
+    plt.xlabel('Iterations')
+    plt.ylabel('Mean Square Error')
+    plt.legend(loc='upper left')
+    plt.show()
+
+def printPlotTrainTest(iterations, x1, y1, x2, y2):
+    plt.plot(iterations, x1, color = 'red', label = 'bias_training')
+    plt.plot(iterations, y1, color = 'orange', label = 'bias_testing')
+    plt.plot(iterations, x2, color = 'pink', label = 'neighbor_training')
+    plt.plot(iterations, y2, color = 'blue', label = 'neighbor_testing')
+    plt.xlabel('Iterations')
+    plt.ylabel('Mean Square Error')
+    plt.legend(loc='upper left')
+    plt.show()
+
+def printPlotIntegrated(iterations, x, y, z):
+    plt.plot(iterations, x, color='red', label='bias')
+    plt.plot(iterations, y, color='orange', label='neighbor')
+    plt.plot(iterations, z, color='pink', label='integrated')
     plt.xlabel('Iterations')
     plt.ylabel('Mean Square Error')
     plt.legend(loc='upper left')
@@ -221,7 +278,11 @@ if __name__ == '__main__':
         with open(args.inpf, 'rb') as f:
             data = pickle.load(f)
             train_mat, test_mat = data['train'], data['test']
+        sparsity = float(train_mat.getnnz() + test_mat.getnnz()) / (train_mat.shape[0] * train_mat.shape[1])
+        print('testing {}'.format(args.inpf))
+        print('Sparsity: {}'.format(sparsity))
 
     # printPlot([1,2,3], [4,6,9], [2,3,4], [7,8,9], [1,2,3], [4,3,2])
-    # diffIteration()
-    diffKValue()
+    diffIteration()
+    # diffKValue()
+
