@@ -174,10 +174,9 @@ if __name__ == '__main__':
             data = pickle.load(f)
             train_mat, test_mat = data['train'], data['test']
 
-    doIt(Simple_sim, sim_fn=similarity.cosine_sim)
+    # doIt(Simple_sim, sim_fn=similarity.cosine_sim)
     doIt(TopK, k=50, sim_fn=similarity.cosine_sim)
-    doIt(Bias, iteration=10)
-    doIt(Neighbor, item_based=False, with_c=True, sim_fn=similarity.cosine_sim, k=100, iteration=1)
-    doIt(Factor, item_based=False, with_y=True, emb_dim=100, iteration=1)
-    doIt(Integrated, item_based=False, with_c=True, sim_fn=similarity.cosine_sim, k=100,
-         with_y=True, emb_dim=100, iteration=1)
+    doIt(Bias, iteration=5)
+    doIt(Neighbor, with_c=True, sim_fn=similarity.cosine_sim, k=100, iteration=5)
+    doIt(Factor, with_y=True, emb_dim=100, iteration=5)
+    doIt(Integrated, with_c=True, sim_fn=similarity.cosine_sim, k=100, with_y=True, emb_dim=100, iteration=5)

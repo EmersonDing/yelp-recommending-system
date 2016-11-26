@@ -45,27 +45,25 @@ class TopK(object):
         self.sim_mat = self.sim_fn(train_mat)
         sorted_sim_mat = np.argsort(self.sim_mat)[:,::-1]
         # k nearest neighbor of user u
-        u_neighbors = sorted_sim_mat[:, 1:self.k+1]
-        u_neighbors.sort()
+        self.u_neighbors = sorted_sim_mat[:, 1:self.k+1]
+        self.u_neighbors.sort()
 
+    def predict(self, train_mat, test_mat):
         rows, cols = test_mat.nonzero()
 
         Sk_rows = []
         Sk_cols = []
         Sk_data = []
         for ind, (u, i) in enumerate(zip(rows, cols)):
-            Sk = list(u_neighbors[u])
+            Sk = list(self.u_neighbors[u])
             Sk_rows.extend([ind]*len(Sk))
             Sk_cols.extend(Sk)
             Sk_data.extend([1]*len(Sk))
 
-        self.SK = sparse.csr_matrix((Sk_data, (Sk_rows, Sk_cols)), shape=(len(rows), ui_mat.shape[0]))
-
-    def predict(self, ui_mat, test_mat):
-        rows, cols = test_mat.nonzero()
-        R = ui_mat[:, cols].T
+        SK = sparse.csr_matrix((Sk_data, (Sk_rows, Sk_cols)), shape=(len(rows), train_mat.shape[0]))
+        R = train_mat[:, cols].T
         S = self.sim_mat[rows, :]
-        MS = self.SK.multiply(sparse.csr_matrix(S))
+        MS = SK.multiply(sparse.csr_matrix(S))
         N = np.sum(MS, axis=1)
         return np.asarray(R.multiply(MS).sum(axis=1)).flatten() / N.flatten()
 
