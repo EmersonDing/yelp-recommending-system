@@ -27,8 +27,8 @@ def parse_arg(argv):
     parsing cli arguments
     '''
     parser = argparse.ArgumentParser(description='Prepare rating matrix')
-    parser.add_argument('-i', '--inpf', default='../processed_data/Stars_Top_Users.pkl', help='pickle file containing train/test rating matrix')
-    parser.add_argument('-ri', '--raw_inpf', default='../raw_data/Stars_Top_Users.csv', help='csv file for rating matrix, used to genrate inpf')
+    parser.add_argument('-i', '--inpf', default='../processed_data/Stars_Top_User_Business.pkl', help='pickle file containing train/test rating matrix')
+    parser.add_argument('-ri', '--raw_inpf', default='../raw_data/Stars_Top_User_Business.csv', help='csv file for rating matrix, used to genrate inpf')
     parser.add_argument('-s', '--split', type=float, default=0.1, help='ratio of testing split data, e.g. 0.1 will split 1/10 (usr, item) ratings as testing pairs.')
     parser.add_argument('-r', '--random_seed', type=int, default=0, help='random seed to split tainging and testing data')
     return parser.parse_args(argv[1:])
