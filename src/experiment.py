@@ -246,13 +246,17 @@ def diffEmbeddedDimension():
     printPlotDiffEmbeddedDimension(kSet, Factor_y, Factor_no_y)
 
 def printPlotDiffIteration(iterations, x1, x2, x3, x4):
+    font = {'family': 'serif',
+        'weight': 'normal',
+        'size': 14,
+        }
     plt.plot(iterations, x1, color = 'red', label = 'bias')
     plt.plot(iterations, x2, color = 'blue', label = 'neighbor_with_y')
     plt.plot(iterations, x3, color = 'green', label = 'factor_without_c')
     plt.plot(iterations, x4, color = 'orange', label = 'integrated')
-    plt.xlabel('Iterations')
-    plt.ylabel('Mean Square Error')
-    plt.legend(loc='upper left')
+    plt.xlabel('Iterations', fontdict=font)
+    plt.ylabel('Mean Square Error', fontdict=font)
+    plt.legend(loc='upper right', bbox_to_anchor=(1.0, 0.6))
     plt.show()
 
 def printPlotTrainTest(iterations, x1, y1, x2, y2):
@@ -290,11 +294,17 @@ def printPlotDiffEmbeddedDimension(k, x, y):
     plt.show()
 
 def printPlotTwoDiff(k, x, y, label_x, label_y, coo_x):
+    font = {'family': 'serif',
+        'weight': 'normal',
+        'size': 14,
+        }
     line1 = plt.plot(k, x, color = 'red', label = label_x)
     line1 = plt.plot(k, y, color = 'blue', label = label_y)
-    plt.xlabel(coo_x)
-    plt.ylabel('Mean Square Error')
-    plt.legend(loc='upper left')
+    plt.xlabel(coo_x, fontdict=font)
+    plt.ylabel('Mean Square Error', fontdict=font)
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', 
+               mode='expand', borderaxespad=0.)
+    #plt.tight_layout()
     plt.show()
 
 if __name__ == '__main__':
