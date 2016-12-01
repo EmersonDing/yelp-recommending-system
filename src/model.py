@@ -64,7 +64,7 @@ class TopK(object):
         R = train_mat[:, cols].T
         S = self.sim_mat[rows, :]
         MS = SK.multiply(sparse.csr_matrix(S))
-        N = np.sum(MS, axis=1)
+        N = MS.sum(axis=1)      # np.sum(MS, axis=1)
         return np.asarray(R.multiply(MS).sum(axis=1)).flatten() / N.flatten()
 
 
