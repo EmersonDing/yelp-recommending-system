@@ -148,7 +148,7 @@ def doIt(modelCls, user_based=True, item_based=True, **model_args):
         model = modelCls(**model_args)
         model.train(train_matT, test_matT)
         train_prediction = model.predict(train_matT, train_matT)
-        print('Item-based CF training MSE: {}'.format(get_mse(train_prediction, train_mat)))
+        print('Item-based CF training MSE: {}'.format(get_mse(train_prediction, train_matT)))
         test_prediction = model.predict(train_matT, test_matT)
         print('Item-based CF testing MSE: {}'.format(get_mse(test_prediction, test_matT)))
 
