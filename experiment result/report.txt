@@ -1,9 +1,9 @@
 1. When iteration = 15, testing close to optimized	// iteration_2.png. k = 100
 2. When k = 50, user based neighbor optimized		// k_1.png, iteration = 15
 3. When embedded dimension = 10, factor with y/without y is optimized	// ed_1.png
-4. With k = 50, when iteration = 15, neighbor error optimized. and with y is better // neighbor_y.png
-5. With k = 50, when iteration = 15, factor error optimized. and without c is better // factor_c.png
-6. Comparison of four model	// iteration_3.png
+4. With k = 50, when iteration = 15, neighbor error optimized. and with c is better // neighbor.png
+5. When iteration = 15, factor error optimized. and without y is better // factor.png. embedded dimension = 10
+6. Comparison of four model	// iteration_e.png
 7. Comparison of train and test	// train_test.png
 8. item and user performance comparison in different data set
 			min count u/i	total count u/i
